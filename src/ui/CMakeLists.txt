@@ -1,7 +1,11 @@
 add_library(asteria_ui STATIC
   app_context.cpp
   app_window.cpp
+  astrology_font.cpp
+  export_options.cpp
+  file_dialog.cpp
   library_panel.cpp
+  markdown_render.cpp
   chart_workspace_panel.cpp
   compare_workspace_panel.cpp
   settings_panel.cpp
@@ -16,4 +20,5 @@ target_link_libraries(asteria_ui PUBLIC
   asteria_render
   asteria_data
   asteria_util
+  comdlg32
 )

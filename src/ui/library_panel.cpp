@@ -2,10 +2,70 @@
 #include "app_context.h"
 #include "imgui.h"
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <cstdio>
 
 namespace asteria::ui {
+
+namespace {
+
+constexpr float kMinListPaneHeight = 140.0f;
+constexpr float kMinEditorPaneHeight = 280.0f;
+constexpr float kPreferredEditorPaneHeight = 520.0f;
+constexpr float kSplitterHeight = 8.0f;
+constexpr float kEditorLabelWidth = 150.0f;
+
+void drawVerticalSplitter(const char* id,
+                         float* bottomHeight,
+                         float minBottomHeight,
+                         float maxBottomHeight,
+                         bool* customized) {
+  ImVec2 cursor = ImGui::GetCursorScreenPos();
+  ImVec2 size(ImGui::GetContentRegionAvail().x, kSplitterHeight);
+  if (size.x < 1.0f) size.x = 1.0f;
+
+  ImGui::InvisibleButton(id, size);
+  if (ImGui::IsItemActive()) {
+    *bottomHeight -= ImGui::GetIO().MouseDelta.y;
+    *customized = true;
+  }
+
+  *bottomHeight = std::clamp(*bottomHeight, minBottomHeight, maxBottomHeight);
+
+  ImDrawList* drawList = ImGui::GetWindowDrawList();
+  ImU32 color = ImGui::GetColorU32(ImGui::IsItemActive() || ImGui::IsItemHovered()
+                                       ? ImGuiCol_SeparatorActive
+                                       : ImGuiCol_Separator);
+  drawList->AddRectFilled(cursor,
+                          ImVec2(cursor.x + size.x, cursor.y + size.y),
+                          color,
+                          2.0f);
+}
+
+void editorLabel(const char* text) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(text);
+}
+
+bool beginEditorTable() {
+  return ImGui::BeginTable("LibraryEditorForm",
+                           2,
+                           ImGuiTableFlags_SizingStretchProp,
+                           ImVec2(-1.0f, 0.0f));
+}
+
+void setupEditorColumns() {
+  ImGui::TableSetupColumn("Field", ImGuiTableColumnFlags_WidthFixed, kEditorLabelWidth);
+  ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+}
+
+void nextEditorFieldRow() {
+  ImGui::TableNextRow();
+  ImGui::TableSetColumnIndex(0);
+}
+
+}  // namespace
 
 LibraryPanel::LibraryPanel(AppContext& ctx) : m_ctx(ctx) {
   refreshPeople();
@@ -138,137 +198,204 @@ void LibraryPanel::draw() {
 
   ImGui::Separator();
 
-  // People table
-  if (ImGui::BeginTable("PeopleTable", 3,
-        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-        ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY |
-        ImGuiTableFlags_SizingFixedFit,
-        ImVec2(0, ImGui::GetContentRegionAvail().y - 220))) {
-    ImGui::TableSetupColumn("Name",    ImGuiTableColumnFlags_None, 180.0f);
-    ImGui::TableSetupColumn("Date",    ImGuiTableColumnFlags_None, 120.0f);
-    ImGui::TableSetupColumn("Created", ImGuiTableColumnFlags_None, 100.0f);
-    ImGui::TableHeadersRow();
-
-    std::string filter(searchBuf_);
-    for (int i = 0; i < static_cast<int>(m_people.size()); ++i) {
-      auto& p = m_people[i];
-      // Substring filter
-      if (!filter.empty()) {
-        std::string lowerName = p.fullName;
-        std::string lowerFilter = filter;
-        std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        std::transform(lowerFilter.begin(), lowerFilter.end(), lowerFilter.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        if (lowerName.find(lowerFilter) == std::string::npos) continue;
-      }
-
-      ImGui::TableNextRow();
-      ImGui::TableSetColumnIndex(0);
-      bool selected = (selectedIdx_ == i);
-      if (ImGui::Selectable(p.fullName.c_str(), selected,
-                            ImGuiSelectableFlags_SpanAllColumns)) {
-        if (selectedIdx_ != i) {
-          selectedIdx_ = i;
-          m_selectedPersonId = p.personId;
-          std::strncpy(nameBuf_, p.fullName.c_str(), sizeof(nameBuf_) - 1);
-          std::strncpy(notesBuf_, p.notes.c_str(), sizeof(notesBuf_) - 1);
-          loadBirthEvent();
-          m_dirty = false;
-        }
-      }
-      ImGui::TableSetColumnIndex(1);
-      // Show birth date from the first birth event
-      auto events = m_ctx.birthEventRepo.findByPersonId(p.personId);
-      if (!events.empty())
-        ImGui::TextUnformatted(events.front().birthDate.c_str());
-      else
-        ImGui::TextDisabled("(none)");
-      ImGui::TableSetColumnIndex(2);
-      ImGui::TextUnformatted(p.createdAt.substr(0, 10).c_str());
+  const float availableHeight = ImGui::GetContentRegionAvail().y;
+  const bool showEditor = hasSelection;
+  float editorHeight = 0.0f;
+  if (showEditor) {
+    const float maxEditorHeight = (std::max)(kMinEditorPaneHeight,
+                                             availableHeight - kMinListPaneHeight - kSplitterHeight);
+    if (!editorPaneCustomized_) {
+      editorPaneHeight_ = (std::min)(kPreferredEditorPaneHeight, maxEditorHeight);
+    } else {
+      editorPaneHeight_ = std::clamp(editorPaneHeight_, kMinEditorPaneHeight, maxEditorHeight);
     }
-    ImGui::EndTable();
+    editorHeight = editorPaneHeight_;
   }
 
-  // Detail editor (below the table)
-  if (hasSelection) {
-    ImGui::Separator();
-    ImGui::Text("Edit Record  (ID: %lld)", static_cast<long long>(m_selectedPersonId));
+  const float listHeight = showEditor
+      ? (std::max)(kMinListPaneHeight, availableHeight - editorHeight - kSplitterHeight)
+      : availableHeight;
+  if (ImGui::BeginChild("LibraryPeoplePane", ImVec2(0.0f, listHeight), ImGuiChildFlags_Borders)) {
+    if (ImGui::BeginTable("PeopleTable", 3,
+          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+          ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY |
+          ImGuiTableFlags_SizingFixedFit,
+          ImVec2(0.0f, -1.0f))) {
+      ImGui::TableSetupColumn("Name",    ImGuiTableColumnFlags_None, 180.0f);
+      ImGui::TableSetupColumn("Date",    ImGuiTableColumnFlags_None, 120.0f);
+      ImGui::TableSetupColumn("Created", ImGuiTableColumnFlags_None, 100.0f);
+      ImGui::TableHeadersRow();
 
-    if (ImGui::InputText("Name", nameBuf_, sizeof(nameBuf_))) m_dirty = true;
+      std::string filter(searchBuf_);
+      for (int i = 0; i < static_cast<int>(m_people.size()); ++i) {
+        auto& p = m_people[i];
+        if (!filter.empty()) {
+          std::string lowerName = p.fullName;
+          std::string lowerFilter = filter;
+          std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
+                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+          std::transform(lowerFilter.begin(), lowerFilter.end(), lowerFilter.begin(),
+                         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+          if (lowerName.find(lowerFilter) == std::string::npos) continue;
+        }
 
-    ImGui::Text("Birth Event:");
-    if (ImGui::InputText("Date (YYYY-MM-DD)", dateBuf_, sizeof(dateBuf_))) m_dirty = true;
-    if (ImGui::InputText("Time (HH:MM)", timeBuf_, sizeof(timeBuf_))) m_dirty = true;
-
-    // --- Atlas-powered city lookup ---
-    if (m_ctx.atlasService.isLoaded()) {
-      ImGui::Text("Location Lookup:");
-      bool searchChanged = ImGui::InputText("##AtlasSearch", atlasSearchBuf_,
-                                             sizeof(atlasSearchBuf_));
-      ImGui::SameLine();
-      ImGui::TextDisabled("(type city name)");
-
-      if (searchChanged) {
-        updateAtlasResults();
-      }
-
-      // Show results list if we have matches
-      if (!atlasResults_.empty()) {
-        float listHeight = std::min(static_cast<float>(atlasResults_.size()) * 20.0f, 200.0f);
-        if (ImGui::BeginChild("##AtlasResults", ImVec2(-1, listHeight),
-                               ImGuiChildFlags_Borders)) {
-          for (int i = 0; i < static_cast<int>(atlasResults_.size()); ++i) {
-            auto* entry = atlasResults_[i];
-            // Format: "City Name (CC) — lat, lon  [timezone]"
-            char label[512];
-            std::snprintf(label, sizeof(label), "%s (%s)  %.4f%s, %.4f%s  [%s]",
-                          entry->name.c_str(),
-                          entry->regionCode.c_str(),
-                          std::abs(entry->latitude),
-                          entry->latitude >= 0 ? "N" : "S",
-                          std::abs(entry->longitude),
-                          entry->longitude >= 0 ? "E" : "W",
-                          entry->timezoneName.c_str());
-            if (ImGui::Selectable(label, atlasSelectedIdx_ == i)) {
-              applyAtlasEntry(*entry);
-              atlasResults_.clear();
-              atlasSearchBuf_[0] = '\0';
-              break;
-            }
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        bool selected = (selectedIdx_ == i);
+        if (ImGui::Selectable(p.fullName.c_str(), selected,
+                              ImGuiSelectableFlags_SpanAllColumns)) {
+          if (selectedIdx_ != i) {
+            selectedIdx_ = i;
+            m_selectedPersonId = p.personId;
+            std::strncpy(nameBuf_, p.fullName.c_str(), sizeof(nameBuf_) - 1);
+            std::strncpy(notesBuf_, p.notes.c_str(), sizeof(notesBuf_) - 1);
+            loadBirthEvent();
+            m_dirty = false;
           }
         }
-        ImGui::EndChild();
+        ImGui::TableSetColumnIndex(1);
+        auto events = m_ctx.birthEventRepo.findByPersonId(p.personId);
+        if (!events.empty()) ImGui::TextUnformatted(events.front().birthDate.c_str());
+        else ImGui::TextDisabled("(none)");
+        ImGui::TableSetColumnIndex(2);
+        ImGui::TextUnformatted(p.createdAt.substr(0, 10).c_str());
       }
+      ImGui::EndTable();
     }
+  }
+  ImGui::EndChild();
 
-    // City display (manual or from atlas)
-    if (ImGui::InputText("City", cityBuf_, sizeof(cityBuf_))) m_dirty = true;
+  if (showEditor) {
+    drawVerticalSplitter("LibraryListEditorSplitter",
+                         &editorPaneHeight_,
+                         kMinEditorPaneHeight,
+                         (std::max)(kMinEditorPaneHeight, availableHeight - kMinListPaneHeight - kSplitterHeight),
+                         &editorPaneCustomized_);
 
-    if (ImGui::InputDouble("Latitude (\xC2\xB0, +N)", &latDeg_, 0.0, 0.0, "%.4f"))
-      m_dirty = true;
-    if (ImGui::InputDouble("Longitude (\xC2\xB0, +E)", &lonDeg_, 0.0, 0.0, "%.4f"))
-      m_dirty = true;
-    if (ImGui::InputDouble("UTC Offset (hours)", &tzOffsetHrs_, 0.25, 1.0, "%.2f"))
-      m_dirty = true;
-    if (ImGui::InputDouble("DST Offset (hours)", &dstHrs_, 0.0, 0.0, "%.2f"))
-      m_dirty = true;
+    if (ImGui::BeginChild("LibraryEditorPane", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders)) {
+      ImGui::Text("Edit Record  (ID: %lld)", static_cast<long long>(m_selectedPersonId));
+      ImGui::Separator();
 
-    const char* accuracyOptions[] = {"Exact", "Approximate", "Unknown"};
-    if (ImGui::Combo("Time Accuracy", &timeAccuracy_, accuracyOptions, IM_ARRAYSIZE(accuracyOptions)))
-      m_dirty = true;
+      if (beginEditorTable()) {
+        setupEditorColumns();
 
-    if (ImGui::InputTextMultiline("Notes", notesBuf_, sizeof(notesBuf_), ImVec2(-1, 40)))
-      m_dirty = true;
+        nextEditorFieldRow();
+        editorLabel("Name");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputText("##Name", nameBuf_, sizeof(nameBuf_))) m_dirty = true;
 
-    bool wasDirty = m_dirty;
-    if (!wasDirty) ImGui::BeginDisabled();
-    if (ImGui::Button("Save")) {
-      savePerson();
-      saveBirthEvent();
-      refreshPeople();
+        nextEditorFieldRow();
+        editorLabel("Birth Date");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputText("##BirthDate", dateBuf_, sizeof(dateBuf_))) m_dirty = true;
+
+        nextEditorFieldRow();
+        editorLabel("Birth Time");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputText("##BirthTime", timeBuf_, sizeof(timeBuf_))) m_dirty = true;
+
+        if (m_ctx.atlasService.isLoaded()) {
+          nextEditorFieldRow();
+          editorLabel("Location Lookup");
+          ImGui::TableSetColumnIndex(1);
+          ImGui::SetNextItemWidth(-1.0f);
+          bool searchChanged = ImGui::InputText("##AtlasSearch", atlasSearchBuf_, sizeof(atlasSearchBuf_));
+          ImGui::TextDisabled("Type city name to search the atlas.");
+          if (searchChanged) {
+            updateAtlasResults();
+          }
+
+          if (!atlasResults_.empty()) {
+            float atlasListHeight = std::min(static_cast<float>(atlasResults_.size()) * 20.0f + 6.0f, 140.0f);
+            if (ImGui::BeginChild("##AtlasResults", ImVec2(-1.0f, atlasListHeight), ImGuiChildFlags_Borders)) {
+              for (int i = 0; i < static_cast<int>(atlasResults_.size()); ++i) {
+                auto* entry = atlasResults_[i];
+                char label[512];
+                std::snprintf(label, sizeof(label), "%s (%s)  %.4f%s, %.4f%s  [%s]",
+                              entry->name.c_str(),
+                              entry->regionCode.c_str(),
+                              std::abs(entry->latitude),
+                              entry->latitude >= 0 ? "N" : "S",
+                              std::abs(entry->longitude),
+                              entry->longitude >= 0 ? "E" : "W",
+                              entry->timezoneName.c_str());
+                if (ImGui::Selectable(label, atlasSelectedIdx_ == i)) {
+                  applyAtlasEntry(*entry);
+                  atlasResults_.clear();
+                  atlasSearchBuf_[0] = '\0';
+                  break;
+                }
+              }
+            }
+            ImGui::EndChild();
+          }
+        }
+
+        nextEditorFieldRow();
+        editorLabel("City");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputText("##City", cityBuf_, sizeof(cityBuf_))) m_dirty = true;
+
+        nextEditorFieldRow();
+        editorLabel("Latitude (deg, +N)");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputDouble("##Latitude", &latDeg_, 0.0, 0.0, "%.4f")) m_dirty = true;
+
+        nextEditorFieldRow();
+        editorLabel("Longitude (deg, +E)");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputDouble("##Longitude", &lonDeg_, 0.0, 0.0, "%.4f")) m_dirty = true;
+
+        nextEditorFieldRow();
+        editorLabel("UTC Offset (hours)");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputDouble("##UtcOffset", &tzOffsetHrs_, 0.25, 1.0, "%.2f")) m_dirty = true;
+
+        nextEditorFieldRow();
+        editorLabel("DST Offset (hours)");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputDouble("##DstOffset", &dstHrs_, 0.0, 0.0, "%.2f")) m_dirty = true;
+
+        nextEditorFieldRow();
+        editorLabel("Time Accuracy");
+        ImGui::TableSetColumnIndex(1);
+        {
+          const char* accuracyOptions[] = {"Exact", "Approximate", "Unknown"};
+          ImGui::SetNextItemWidth(-1.0f);
+          if (ImGui::Combo("##TimeAccuracy", &timeAccuracy_, accuracyOptions, IM_ARRAYSIZE(accuracyOptions))) {
+            m_dirty = true;
+          }
+        }
+
+        nextEditorFieldRow();
+        editorLabel("Notes");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputTextMultiline("##Notes", notesBuf_, sizeof(notesBuf_), ImVec2(-1.0f, 96.0f))) {
+          m_dirty = true;
+        }
+
+        ImGui::EndTable();
+      }
+
+      bool wasDirty = m_dirty;
+      if (!wasDirty) ImGui::BeginDisabled();
+      if (ImGui::Button("Save")) {
+        savePerson();
+        saveBirthEvent();
+        refreshPeople();
+      }
+      if (!wasDirty) ImGui::EndDisabled();
     }
-    if (!wasDirty) ImGui::EndDisabled();
+    ImGui::EndChild();
   }
 
   ImGui::End();

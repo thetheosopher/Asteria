@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#include "render/astro_glyphs.h"
 #include "render/chart_scene.h"
+#include "render/export_layout_templates.h"
 #include "render/natal_chart_layout.h"
 #include "render/svg_serializer.h"
 #include "render/theme_presets.h"
@@ -40,6 +42,14 @@ TEST_F(RenderTest, LuxuryLightTheme) {
 TEST_F(RenderTest, LuxuryDarkTheme) {
   auto theme = asteria::render::luxuryDark();
   EXPECT_EQ(theme.name, "Luxury Dark");
+}
+
+TEST(RenderGlyphTest, ZodiacGlyphsUseZeroBasedIndexing) {
+  EXPECT_STREQ(asteria::render::glyphs::sign(0), "\xe2\x99\x88");   // Aries
+  EXPECT_STREQ(asteria::render::glyphs::sign(3), "\xe2\x99\x8b");   // Cancer
+  EXPECT_STREQ(asteria::render::glyphs::sign(7), "\xe2\x99\x8f");   // Scorpio
+  EXPECT_STREQ(asteria::render::glyphs::sign(11), "\xe2\x99\x93");  // Pisces
+  EXPECT_STREQ(asteria::render::glyphs::signByName("Pisces"), "\xe2\x99\x93");
 }
 
 TEST_F(RenderTest, NatalLayoutProducesGeometry) {
@@ -100,4 +110,37 @@ TEST_F(RenderTest, SvgDeterminism) {
   std::string svg1 = asteria::render::serializeSvg(scene1);
   std::string svg2 = asteria::render::serializeSvg(scene2);
   EXPECT_EQ(svg1, svg2) << "SVG output must be deterministic for the same input";
+}
+
+TEST_F(RenderTest, ReferenceSheetAddsFactSections) {
+  auto theme = asteria::render::textbookLight();
+  auto baseScene = asteria::render::buildNatalChartScene(chart, theme);
+  std::vector<asteria::render::ReferenceSheetSection> sections = {
+      {"Subject", {{"Name", "Ada Lovelace"}, {"Chart", "Natal"}}},
+      {"Chart Facts", {{"House System", chart.houseSystem}, {"Zodiac", chart.zodiacMode}}},
+  };
+
+  auto scene = asteria::render::buildReferenceSheetScene(
+      baseScene,
+      theme,
+      "Ada Lovelace",
+      "Placidus / Tropical",
+      "Asteria export",
+      sections);
+
+  EXPECT_GT(scene.width, baseScene.width);
+  EXPECT_EQ(scene.height, baseScene.height + 280);
+
+  bool hasSectionTitle = false;
+  bool hasFactLine = false;
+  for (const auto& text : scene.texts) {
+    if (text.id == "layout-section-0" && text.content == "Subject") hasSectionTitle = true;
+    if (text.id == "layout-fact-0-0" && text.content.find("Name: Ada Lovelace") != std::string::npos) hasFactLine = true;
+  }
+
+  EXPECT_TRUE(hasSectionTitle);
+  EXPECT_TRUE(hasFactLine);
+
+  std::string svg = asteria::render::serializeSvg(scene);
+  EXPECT_NE(svg.find("#fcf9f2"), std::string::npos);
 }

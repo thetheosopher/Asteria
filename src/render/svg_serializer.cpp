@@ -92,7 +92,7 @@ std::string serializeSvg(const ChartScene& scene) {
         << " -->" << '\n';
   }
 
-  out << R"(  <rect width="100%" height="100%" fill="white"/>)" << '\n';
+  out << R"(  <rect width="100%" height="100%" fill=")" << scene.background.toHex() << R"("/>)" << '\n';
 
   // Group elements by layer name. Within a layer the rendering order is
   // circles → lines → texts which preserves the intended visual stacking.

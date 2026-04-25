@@ -1,189 +1,15 @@
 #include "ai_interpretation_panel.h"
 #include "app_context.h"
+#include "file_dialog.h"
+#include "markdown_render.h"
 #include "util/ollama_client.h"
 #include "imgui.h"
 
+#include <fstream>
 #include <sstream>
 #include <vector>
 
 namespace asteria::ui {
-
-// ---------------------------------------------------------------------------
-// Simple Markdown-to-ImGui renderer
-// ---------------------------------------------------------------------------
-namespace {
-
-// Strip leading '#' characters and return the heading level (0 = not a heading).
-int detectHeading(const std::string& line, std::string& content) {
-  size_t i = 0;
-  while (i < line.size() && line[i] == '#') ++i;
-  if (i == 0 || i > 4 || (i < line.size() && line[i] != ' ')) {
-    content = line;
-    return 0;
-  }
-  content = (i + 1 < line.size()) ? line.substr(i + 1) : "";
-  return static_cast<int>(i);
-}
-
-// Strip **bold** markers and render a line using ImGui, with color highlights
-// for bold spans. Each call renders one visual line (with wrapping).
-void renderLineWithBold(const std::string& line, const ImVec4& normalColor,
-                        const ImVec4& boldColor) {
-  // We can't do true inline bold+normal reflow in ImGui (no rich-text layout),
-  // so we strip the markers and render the whole line as TextWrapped, then
-  // overlay highlighted bold segments as separate calls if the line is short.
-  //
-  // Practical approach: build a clean string (markers removed) for wrapping,
-  // and a parallel list of bold ranges. For simple rendering, if the line has
-  // any bold markers we highlight the entire line in the bold color; otherwise
-  // normal. This avoids the broken SameLine approach while keeping visual
-  // distinction.
-  //
-  // Better approach: render segments. For each segment between ** markers,
-  // if it's a bold segment, render with boldColor; otherwise normalColor.
-  // Use SameLine only within the same visual line, and let TextWrapped handle
-  // each segment. This works if we DON'T use SameLine (each segment gets its
-  // own line), but that's also ugly.
-  //
-  // Best practical approach for ImGui: strip markers, render full line as
-  // wrapped text. Bold segments get the bold color applied to the entire line
-  // if it starts with bold, or we just strip and render normally. LLM output
-  // typically puts **heading text** on its own line, so this works well.
-
-  // Fast path: no bold markers at all.
-  if (line.find("**") == std::string::npos) {
-    ImGui::PushStyleColor(ImGuiCol_Text, normalColor);
-    ImGui::TextWrapped("%s", line.c_str());
-    ImGui::PopStyleColor();
-    return;
-  }
-
-  // Strip all ** markers and determine if the majority of the line is bold.
-  std::string clean;
-  clean.reserve(line.size());
-  bool insideBold = false;
-  size_t boldChars = 0;
-  size_t totalChars = 0;
-  size_t i = 0;
-  while (i < line.size()) {
-    if (i + 1 < line.size() && line[i] == '*' && line[i + 1] == '*') {
-      insideBold = !insideBold;
-      i += 2;
-      continue;
-    }
-    clean += line[i];
-    totalChars++;
-    if (insideBold) boldChars++;
-    i++;
-  }
-
-  // If most of the content was bold, render in bold color; otherwise normal.
-  bool majorityBold = (totalChars > 0 && boldChars * 2 >= totalChars);
-  ImGui::PushStyleColor(ImGuiCol_Text, majorityBold ? boldColor : normalColor);
-  ImGui::TextWrapped("%s", clean.c_str());
-  ImGui::PopStyleColor();
-}
-
-// Render a full markdown string into ImGui widgets.
-void renderMarkdown(const std::string& text) {
-  const ImVec4 colorNormal = ImGui::GetStyleColorVec4(ImGuiCol_Text);
-  const ImVec4 colorBold   = ImVec4(1.0f, 0.9f, 0.5f, 1.0f);   // gold
-  const ImVec4 colorH1     = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);   // bright blue
-  const ImVec4 colorH2     = ImVec4(0.5f, 0.85f, 0.95f, 1.0f);  // lighter blue
-  const ImVec4 colorH3     = ImVec4(0.6f, 0.9f, 0.9f, 1.0f);    // cyan
-  const ImVec4 colorBullet = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);    // dim
-
-  std::istringstream stream(text);
-  std::string line;
-  bool prevBlank = false;
-
-  while (std::getline(stream, line)) {
-    // Trim trailing \r (from CRLF).
-    if (!line.empty() && line.back() == '\r') line.pop_back();
-
-    // Blank line → spacing.
-    if (line.empty()) {
-      if (!prevBlank) ImGui::Spacing();
-      prevBlank = true;
-      continue;
-    }
-    prevBlank = false;
-
-    // Heading detection.
-    std::string headingContent;
-    int level = detectHeading(line, headingContent);
-    if (level > 0) {
-      // Strip bold markers from heading text.
-      std::string clean;
-      for (size_t i = 0; i < headingContent.size(); ++i) {
-        if (i + 1 < headingContent.size() &&
-            headingContent[i] == '*' && headingContent[i + 1] == '*') {
-          i++; continue;
-        }
-        clean += headingContent[i];
-      }
-      ImGui::Spacing();
-      float scale = (level == 1) ? 1.4f : (level == 2) ? 1.2f : 1.05f;
-      ImVec4 col = (level == 1) ? colorH1 : (level == 2) ? colorH2 : colorH3;
-      ImGui::SetWindowFontScale(scale);
-      ImGui::PushStyleColor(ImGuiCol_Text, col);
-      ImGui::TextWrapped("%s", clean.c_str());
-      ImGui::PopStyleColor();
-      ImGui::SetWindowFontScale(1.0f);
-      if (level <= 2) {
-        // Underline for H1/H2.
-        ImVec2 p = ImGui::GetCursorScreenPos();
-        float w = ImGui::GetContentRegionAvail().x;
-        ImVec4 dimCol = col; dimCol.w = 0.3f;
-        ImGui::GetWindowDrawList()->AddLine(
-            ImVec2(p.x, p.y - 2), ImVec2(p.x + w, p.y - 2),
-            ImGui::GetColorU32(dimCol), 1.0f);
-      }
-      continue;
-    }
-
-    // Bullet list item (- or *).
-    if ((line.size() >= 2) &&
-        (line[0] == '-' || line[0] == '*') && line[1] == ' ') {
-      std::string content = line.substr(2);
-      ImGui::PushStyleColor(ImGuiCol_Text, colorBullet);
-      ImGui::TextUnformatted("  \xE2\x80\xA2");  // bullet U+2022
-      ImGui::PopStyleColor();
-      ImGui::SameLine();
-      renderLineWithBold(content, colorNormal, colorBold);
-      continue;
-    }
-
-    // Numbered list item (1. 2. etc.).
-    if (line.size() >= 3 && line[0] >= '1' && line[0] <= '9' && line[1] == '.') {
-      size_t sp = line.find(' ');
-      if (sp != std::string::npos && sp < 5) {
-        std::string prefix = line.substr(0, sp + 1);
-        std::string content = line.substr(sp + 1);
-        ImGui::PushStyleColor(ImGuiCol_Text, colorBullet);
-        ImGui::TextUnformatted(prefix.c_str());
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        renderLineWithBold(content, colorNormal, colorBold);
-        continue;
-      }
-    }
-
-    // Horizontal rule (---, ***, ___).
-    if (line.size() >= 3 &&
-        (line == "---" || line == "***" || line == "___" ||
-         line.find_first_not_of('-') == std::string::npos ||
-         line.find_first_not_of('*') == std::string::npos)) {
-      ImGui::Separator();
-      continue;
-    }
-
-    // Regular paragraph line.
-    renderLineWithBold(line, colorNormal, colorBold);
-  }
-}
-
-}  // namespace
 
 AiInterpretationPanel::AiInterpretationPanel(AppContext& ctx) : m_ctx(ctx) {}
 
@@ -253,6 +79,14 @@ void AiInterpretationPanel::draw() {
     if (!canGenerate) ImGui::EndDisabled();
   }
 
+  ImGui::SameLine();
+  bool canSave = !m_displayText.empty();
+  if (!canSave) ImGui::BeginDisabled();
+  if (ImGui::Button("Save...")) {
+    saveInterpretation();
+  }
+  if (!canSave) ImGui::EndDisabled();
+
   // Snapshot the shared streaming state.
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -263,6 +97,12 @@ void AiInterpretationPanel::draw() {
   // Error display.
   if (!m_displayError.empty()) {
     ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", m_displayError.c_str());
+  }
+  if (!m_statusText.empty()) {
+    const ImVec4 color = m_statusIsError
+        ? ImVec4(0.9f, 0.3f, 0.3f, 1.0f)
+        : ImVec4(0.3f, 0.7f, 0.4f, 1.0f);
+    ImGui::TextColored(color, "%s", m_statusText.c_str());
   }
 
   // Streaming spinner.
@@ -278,7 +118,7 @@ void AiInterpretationPanel::draw() {
                      ImGuiWindowFlags_HorizontalScrollbar);
 
   if (!m_displayText.empty()) {
-    renderMarkdown(m_displayText);
+    markdown_render::renderMarkdown(m_displayText);
 
     // Auto-scroll while generating.
     if (generating && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 20.0f) {
@@ -334,6 +174,36 @@ void AiInterpretationPanel::stopGeneration() {
   m_abortFlag.store(true);
   if (m_worker.joinable()) m_worker.join();
   m_generating.store(false);
+}
+
+void AiInterpretationPanel::saveInterpretation() {
+  if (m_displayText.empty()) return;
+
+  auto path = showSaveFileDialog(
+      L"Save AI Interpretation",
+      "ai_interpretation.md",
+      L"Markdown Files (*.md)\0*.md\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0\0",
+      L"md");
+  if (!path) {
+    return;
+  }
+
+  std::ofstream out(*path, std::ios::binary);
+  if (!out.is_open()) {
+    m_statusText = "Failed to save AI interpretation.";
+    m_statusIsError = true;
+    return;
+  }
+
+  out << m_displayText;
+  if (!out.good()) {
+    m_statusText = "Failed to write AI interpretation.";
+    m_statusIsError = true;
+    return;
+  }
+
+  m_statusText = "Saved: " + *path;
+  m_statusIsError = false;
 }
 
 // ---------------------------------------------------------------------------

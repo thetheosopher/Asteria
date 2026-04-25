@@ -144,7 +144,12 @@ CliDispatcher::CliResult CliDispatcher::exportSvg(
 
   auto theme = resolveTheme(themeName);
   auto scene = render::buildNatalChartScene(result.value(), theme);
-  auto exportResult = m_exportService.exportSvg(scene, result.value().computedChartId, outputPath, theme);
+  core::ExportMetadata metadata;
+  metadata.chartType = "natal";
+  metadata.exportProfile = "vector";
+  metadata.layoutTemplate = "chart_only";
+  metadata.hasWarnings = !result.value().uncertaintyFlags.empty();
+  auto exportResult = m_exportService.exportSvg(scene, result.value().computedChartId, outputPath, theme, metadata);
   if (!exportResult.ok()) return {false, "", exportResult.error().message};
   return {true, R"({"exported":")" + outputPath + R"(","format":"svg"})", ""};
 }
@@ -161,8 +166,13 @@ CliDispatcher::CliResult CliDispatcher::exportPng(
 
   auto theme = resolveTheme(themeName);
   auto scene = render::buildNatalChartScene(result.value(), theme);
+  core::ExportMetadata metadata;
+  metadata.chartType = "natal";
+  metadata.exportProfile = "custom";
+  metadata.layoutTemplate = "chart_only";
+  metadata.hasWarnings = !result.value().uncertaintyFlags.empty();
   auto exportResult = m_exportService.exportPng(scene, result.value().computedChartId,
-                                                 outputPath, widthPx, heightPx, dpi, theme);
+                                                 outputPath, widthPx, heightPx, dpi, theme, metadata);
   if (!exportResult.ok()) return {false, "", exportResult.error().message};
   return {true, R"({"exported":")" + outputPath + R"(","format":"png"})", ""};
 }

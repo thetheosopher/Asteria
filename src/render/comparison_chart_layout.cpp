@@ -15,6 +15,7 @@ ChartScene buildSynastryChartScene(const domain::ComputedChart& chartA,
   ChartScene scene;
   scene.width = 1000;
   scene.height = 1000;
+  scene.background = theme.background;
 
   const double cx = 500.0;
   const double cy = 500.0;
@@ -97,6 +98,7 @@ ChartScene buildCompositeChartScene(const domain::ComputedChart& compositeChart,
   ChartScene scene;
   scene.width = 1000;
   scene.height = 1000;
+  scene.background = theme.background;
 
   const double cx = 500.0;
   const double cy = 500.0;

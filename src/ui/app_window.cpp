@@ -7,6 +7,7 @@
 #include <tchar.h>
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 
@@ -15,7 +16,11 @@
 #include "compare_workspace_panel.h"
 #include "settings_panel.h"
 #include "ai_interpretation_panel.h"
+#include "astrology_font.h"
 #include "util/atlas_service.h"
+#include "render/theme_presets.h"
+
+#include <filesystem>
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
@@ -118,6 +123,119 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 namespace asteria::ui {
 
+namespace {
+
+int parseSettingIndex(const asteria::ui::AppContext& ctx, const char* key, int fallback, int maxExclusive) {
+  int value = fallback;
+  try { value = std::stoi(ctx.getSetting(key, std::to_string(fallback))); }
+  catch (...) { value = fallback; }
+  if (value < 0 || value >= maxExclusive) return fallback;
+  return value;
+}
+
+ImVec4 colorVec(const asteria::render::Color& color, float alpha = 1.0f) {
+  return ImVec4(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, alpha);
+}
+
+ImVec4 mixColor(const ImVec4& a, const ImVec4& b, float weightToB, float alpha = 1.0f) {
+  return ImVec4(a.x + (b.x - a.x) * weightToB,
+                a.y + (b.y - a.y) * weightToB,
+                a.z + (b.z - a.z) * weightToB,
+                alpha);
+}
+
+float luminance(const ImVec4& color) {
+  return color.x * 0.2126f + color.y * 0.7152f + color.z * 0.0722f;
+}
+
+void applyApplicationTheme(const asteria::render::ThemePreset& theme) {
+  ImGuiStyle& style = ImGui::GetStyle();
+  ImVec4* colors = style.Colors;
+
+  const ImVec4 background = colorVec(theme.background);
+  const ImVec4 primary = colorVec(theme.primary);
+  const ImVec4 secondary = colorVec(theme.secondary);
+  const ImVec4 accent = colorVec(theme.accent);
+  const ImVec4 text = colorVec(theme.text);
+  const bool isDark = luminance(background) < 0.45f;
+  const ImVec4 contrast = isDark ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+  colors[ImGuiCol_Text] = text;
+  colors[ImGuiCol_TextDisabled] = mixColor(text, background, 0.45f, 1.0f);
+  colors[ImGuiCol_WindowBg] = background;
+  colors[ImGuiCol_ChildBg] = mixColor(background, contrast, isDark ? 0.05f : 0.03f, 1.0f);
+  colors[ImGuiCol_PopupBg] = mixColor(background, contrast, isDark ? 0.08f : 0.05f, 0.98f);
+  colors[ImGuiCol_Border] = colorVec(theme.secondary, 0.55f);
+  colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
+  colors[ImGuiCol_FrameBg] = mixColor(background, contrast, isDark ? 0.10f : 0.08f, 1.0f);
+  colors[ImGuiCol_FrameBgHovered] = mixColor(accent, background, 0.72f, 1.0f);
+  colors[ImGuiCol_FrameBgActive] = mixColor(accent, background, 0.58f, 1.0f);
+  colors[ImGuiCol_TitleBg] = mixColor(background, primary, isDark ? 0.28f : 0.14f, 1.0f);
+  colors[ImGuiCol_TitleBgActive] = mixColor(accent, background, 0.58f, 1.0f);
+  colors[ImGuiCol_TitleBgCollapsed] = colors[ImGuiCol_TitleBg];
+  colors[ImGuiCol_MenuBarBg] = mixColor(background, primary, isDark ? 0.18f : 0.08f, 1.0f);
+  colors[ImGuiCol_ScrollbarBg] = mixColor(background, contrast, isDark ? 0.04f : 0.02f, 1.0f);
+  colors[ImGuiCol_ScrollbarGrab] = mixColor(secondary, background, 0.35f, 1.0f);
+  colors[ImGuiCol_ScrollbarGrabHovered] = mixColor(accent, background, 0.45f, 1.0f);
+  colors[ImGuiCol_ScrollbarGrabActive] = accent;
+  colors[ImGuiCol_CheckMark] = accent;
+  colors[ImGuiCol_SliderGrab] = accent;
+  colors[ImGuiCol_SliderGrabActive] = mixColor(accent, contrast, isDark ? 0.18f : 0.12f, 1.0f);
+  colors[ImGuiCol_Button] = mixColor(accent, background, 0.55f, 1.0f);
+  colors[ImGuiCol_ButtonHovered] = mixColor(accent, contrast, isDark ? 0.10f : 0.06f, 1.0f);
+  colors[ImGuiCol_ButtonActive] = accent;
+  colors[ImGuiCol_Header] = mixColor(primary, background, 0.52f, 1.0f);
+  colors[ImGuiCol_HeaderHovered] = mixColor(accent, background, 0.52f, 1.0f);
+  colors[ImGuiCol_HeaderActive] = accent;
+  colors[ImGuiCol_Separator] = colorVec(theme.secondary, 0.60f);
+  colors[ImGuiCol_SeparatorHovered] = accent;
+  colors[ImGuiCol_SeparatorActive] = accent;
+  colors[ImGuiCol_ResizeGrip] = colorVec(theme.secondary, 0.45f);
+  colors[ImGuiCol_ResizeGripHovered] = colorVec(theme.accent, 0.75f);
+  colors[ImGuiCol_ResizeGripActive] = accent;
+  colors[ImGuiCol_Tab] = mixColor(primary, background, 0.62f, 1.0f);
+  colors[ImGuiCol_TabHovered] = mixColor(accent, background, 0.55f, 1.0f);
+  colors[ImGuiCol_TabSelected] = mixColor(accent, background, 0.42f, 1.0f);
+  colors[ImGuiCol_TabDimmed] = mixColor(primary, background, 0.78f, 1.0f);
+  colors[ImGuiCol_TabDimmedSelected] = mixColor(accent, background, 0.62f, 1.0f);
+}
+
+bool ollamaEnabled(const AppContext& ctx) {
+  return ctx.getSetting("ollama_enabled", "0") == "1";
+}
+
+void applyDefaultDockLayout(ImGuiID dockspaceId,
+                            const ImVec2& size,
+                            bool showAiInterpretation,
+                            LibraryPanel& libraryPanel,
+                            ChartWorkspacePanel& chartPanel,
+                            CompareWorkspacePanel& comparePanel,
+                            AiInterpretationPanel& aiPanel) {
+  libraryPanel.open = true;
+  chartPanel.open = true;
+  comparePanel.open = true;
+  aiPanel.open = showAiInterpretation;
+
+  ImGui::DockBuilderRemoveNode(dockspaceId);
+  ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+  ImGui::DockBuilderSetNodeSize(dockspaceId, size);
+
+  ImGuiID leftDockId = 0;
+  ImGuiID rightDockId = 0;
+  ImGui::DockBuilderSplitNode(dockspaceId, ImGuiDir_Left, 0.25f, &leftDockId, &rightDockId);
+
+  ImGui::DockBuilderDockWindow("Library", leftDockId);
+  ImGui::DockBuilderDockWindow("Chart Workspace", rightDockId);
+  ImGui::DockBuilderDockWindow("Compare Workspace", rightDockId);
+  if (showAiInterpretation) {
+    ImGui::DockBuilderDockWindow("AI Interpretation", rightDockId);
+  }
+
+  ImGui::DockBuilderFinish(dockspaceId);
+}
+
+}  // namespace
+
 int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
                    util::AtlasService& atlas) {
   // Create shared application context
@@ -167,56 +285,10 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
   ImGui_ImplWin32_Init(hwnd);
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-  // Load fonts: default + Segoe UI Symbol for astrological glyphs
+  // Load fonts: primary UI font plus Astro.ttf for app-wide astrology glyphs
+  // when it is bundled next to the executable.
   {
-    // Primary UI font (Segoe UI, or fall back to built-in)
-    const char* segoeUI = "C:\\Windows\\Fonts\\segoeui.ttf";
-    if (GetFileAttributesA(segoeUI) != INVALID_FILE_ATTRIBUTES) {
-      io.Fonts->AddFontFromFileTTF(segoeUI, 16.0f);
-    } else {
-      io.Fonts->AddFontDefault();
-    }
-
-    // Merge Segoe UI Symbol for astrological Unicode glyphs
-    const char* segoeSymbol = "C:\\Windows\\Fonts\\seguisym.ttf";
-    if (GetFileAttributesA(segoeSymbol) != INVALID_FILE_ATTRIBUTES) {
-      ImFontConfig mergeConfig;
-      mergeConfig.MergeMode = true;
-      mergeConfig.PixelSnapH = true;
-      // Zodiac signs U+2648..U+2653, misc symbols U+2600..U+26FF, geometric U+25A0..U+25FF
-      static const ImWchar glyphRanges[] = {
-        0x2500, 0x26FF,  // Box drawing through Misc Symbols (planets, signs, aspects)
-        0x2700, 0x27BF,  // Dingbats
-        0x00B0, 0x00B0,  // Degree sign °
-        0,
-      };
-      io.Fonts->AddFontFromFileTTF(segoeSymbol, 16.0f, &mergeConfig, glyphRanges);
-    }
-
-    // Larger font for chart glyph rendering
-    const char* glyphFontPath = (GetFileAttributesA(segoeSymbol) != INVALID_FILE_ATTRIBUTES)
-        ? segoeSymbol : segoeUI;
-    if (GetFileAttributesA(glyphFontPath) != INVALID_FILE_ATTRIBUTES) {
-      // This will be font index 1 in the font atlas
-      ImFontConfig cfg;
-      cfg.SizePixels = 22.0f;
-      io.Fonts->AddFontFromFileTTF(glyphFontPath, 22.0f, &cfg);
-      // Merge symbol glyphs into the large font too
-      if (GetFileAttributesA(segoeSymbol) != INVALID_FILE_ATTRIBUTES) {
-        ImFontConfig mergeLarge;
-        mergeLarge.MergeMode = true;
-        mergeLarge.PixelSnapH = true;
-        static const ImWchar glyphRangesLarge[] = {
-          0x2500, 0x26FF,
-          0x2700, 0x27BF,
-          0x00B0, 0x00B0,
-          0,
-        };
-        io.Fonts->AddFontFromFileTTF(segoeSymbol, 22.0f, &mergeLarge, glyphRangesLarge);
-      }
-    }
-
-    io.Fonts->Build();
+    astrology_font::load(io, std::filesystem::current_path());
   }
 
   // Workspace panels
@@ -228,7 +300,8 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
   chartPanel.setAiPanel(&aiPanel);
   comparePanel.setAiPanel(&aiPanel);
 
-  const ImVec4 clearColor(0.10f, 0.10f, 0.12f, 1.00f);
+  bool resetToDefaultLayout = true;
+  int appliedThemeIndex = -1;
 
   // Main loop
   bool running = true;
@@ -244,6 +317,13 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+
+    settingsPanel.ensureLoaded();
+    const int currentThemeIndex = parseSettingIndex(ctx, "default_theme", 0, 4);
+    if (currentThemeIndex != appliedThemeIndex) {
+      applyApplicationTheme(render::themePresetByIndex(currentThemeIndex));
+      appliedThemeIndex = currentThemeIndex;
+    }
 
     // Full-window dockspace
     {
@@ -270,11 +350,22 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-          ImGui::MenuItem("Library",   nullptr, &libraryPanel.open);
-          ImGui::MenuItem("Chart",     nullptr, &chartPanel.open);
-          ImGui::MenuItem("Compare",   nullptr, &comparePanel.open);
-          ImGui::MenuItem("AI Interpretation", nullptr, &aiPanel.open);
-          ImGui::MenuItem("Settings",  nullptr, &settingsPanel.open);
+          if (ImGui::BeginMenu("Panels")) {
+            ImGui::MenuItem("Library",   nullptr, &libraryPanel.open);
+            ImGui::MenuItem("Chart",     nullptr, &chartPanel.open);
+            ImGui::MenuItem("Compare",   nullptr, &comparePanel.open);
+            if (settingsPanel.isOllamaEnabled()) {
+              ImGui::MenuItem("AI Interpretation", nullptr, &aiPanel.open);
+            }
+            ImGui::EndMenu();
+          }
+
+          settingsPanel.drawViewMenuContents();
+
+          ImGui::Separator();
+          if (ImGui::MenuItem("Restore Default Layout")) {
+            resetToDefaultLayout = true;
+          }
           ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -282,6 +373,16 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
 
       ImGuiID dockspaceId = ImGui::GetID("AsteriaDockspace");
       ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+      if (resetToDefaultLayout) {
+        applyDefaultDockLayout(dockspaceId,
+                               viewport->WorkSize,
+                               settingsPanel.isOllamaEnabled(),
+                               libraryPanel,
+                               chartPanel,
+                               comparePanel,
+                               aiPanel);
+        resetToDefaultLayout = false;
+      }
       ImGui::End();
     }
 
@@ -290,11 +391,11 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
     chartPanel.setSelectedPerson(libraryPanel.selectedPersonId());
     chartPanel.draw();
     comparePanel.draw();
-    settingsPanel.draw();
     aiPanel.draw();
 
     // Render
     ImGui::Render();
+    const ImVec4 clearColor = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
     const float clearColorArray[4] = {
         clearColor.x * clearColor.w,
         clearColor.y * clearColor.w,

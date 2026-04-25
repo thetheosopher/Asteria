@@ -36,13 +36,14 @@ class ChartWorkspacePanel {
   void drawChartCanvas();
   void drawInfoSidePanel();
   void drawInterpretationSidePanel();
+  std::string buildClipboardText() const;
   render::ThemePreset currentThemePreset() const;
 
   AppContext& m_ctx;
 
-  int  currentTheme_     = 0;
   int  currentChartType_ = 0;  // 0=Natal, 1=Transit-to-Natal
-  bool showInterpretation_ = false;
+  int  exportPngProfile_ = 0;
+  int  exportLayoutTemplate_ = 0;
   std::string interpretationText_;
   std::string statusMessage_;
 
@@ -53,6 +54,7 @@ class ChartWorkspacePanel {
   std::optional<domain::ComputedChart> m_chart;
   render::ChartScene m_scene;
   bool m_hasScene = false;
+  bool m_focusOnNextDraw = false;
   AiInterpretationPanel* m_aiPanel = nullptr;
 };
 

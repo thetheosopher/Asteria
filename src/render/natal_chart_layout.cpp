@@ -3,16 +3,34 @@
 #include <cmath>
 #include <cstdio>
 
+#include <array>
+
 namespace asteria::render {
 
 static constexpr double kPi = 3.14159265358979323846;
 
 static double degToRad(double deg) { return deg * kPi / 180.0; }
 
+static bool shouldRenderOnWheel(const std::string& objectId) {
+  static const std::array<const char*, 10> kWheelObjects = {
+      "Sun", "Moon", "Mercury", "Venus", "Mars",
+      "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+  };
+  for (const char* name : kWheelObjects) {
+    if (objectId == name) return true;
+  }
+  return false;
+}
+
+static std::pair<double, double> polarPoint(double cx, double cy, double radius, double angle) {
+  return {cx + std::cos(angle) * radius, cy + std::sin(angle) * radius};
+}
+
 ChartScene buildNatalChartScene(const asteria::domain::ComputedChart& chart, const ThemePreset& theme) {
   ChartScene scene;
   scene.width = 1000;
   scene.height = 1000;
+  scene.background = theme.background;
   scene.canonicalHash = chart.canonicalHash;
   scene.engineMethod  = chart.engineMethod;
   scene.houseSystem   = chart.houseSystem;
@@ -84,10 +102,12 @@ ChartScene buildNatalChartScene(const asteria::domain::ComputedChart& chart, con
 
   // --- Planet glyphs and labels ---
   for (const auto& planet : chart.planets) {
+    if (!shouldRenderOnWheel(planet.objectId)) continue;
     const double angle = degToRad(-90.0 + planet.longitudeDegrees);
-    const double r = 265.0;
-    const double x = cx + std::cos(angle) * r;
-    const double y = cy + std::sin(angle) * r;
+    const double glyphR = 248.0;
+    const double degreeR = 230.0;
+    const auto [x, y] = polarPoint(cx, cy, glyphR, angle);
+    const auto [degreeX, degreeY] = polarPoint(cx, cy, degreeR, angle);
     const char* glyph = glyphs::planet(planet.objectId);
     std::string label = glyph ? glyph : planet.objectId;
     {
@@ -97,7 +117,7 @@ ChartScene buildNatalChartScene(const asteria::domain::ComputedChart& chart, con
       scene.texts.push_back(t);
     }
     {
-      TextElement t{x, y + 16.0, glyphs::formatDegMin(planet.longitudeDegrees),
+      TextElement t{degreeX, degreeY, glyphs::formatDegMin(planet.longitudeDegrees),
                     11, "middle", theme.secondary};
       t.layer = "planets";
       t.id = "planet-" + planet.objectId + "-deg";
@@ -121,6 +141,7 @@ ChartScene buildNatalChartScene(const asteria::domain::ComputedChart& chart, con
     };
     int idx = 0;
     for (const auto& asp : chart.aspects) {
+      if (!shouldRenderOnWheel(asp.objectA) || !shouldRenderOnWheel(asp.objectB)) continue;
       double angA = degToRad(-90.0 + findLon(asp.objectA));
       double angB = degToRad(-90.0 + findLon(asp.objectB));
       double r = houseR - 6.0;
@@ -142,18 +163,6 @@ ChartScene buildNatalChartScene(const asteria::domain::ComputedChart& chart, con
     }
   }
 
-  // --- Title block ---
-  {
-    TextElement t{cx, 115.0, "Asteria Natal Chart", 28, "middle", theme.text};
-    t.layer = "title"; t.id = "title-main";
-    scene.texts.push_back(t);
-  }
-  {
-    TextElement t{cx, 145.0, chart.houseSystem + " / " + chart.zodiacMode,
-                  16, "middle", theme.secondary};
-    t.layer = "title"; t.id = "title-meta";
-    scene.texts.push_back(t);
-  }
   if (!chart.uncertaintyFlags.empty()) {
     TextElement t{cx, 175.0,
                   "Warning: uncertain birth-time assumptions present",

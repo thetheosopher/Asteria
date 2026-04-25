@@ -32,7 +32,7 @@ inline const char* planet(const std::string& objectId) {
 
 // Zodiac sign glyphs (U+2648–U+2653)
 inline const char* sign(int signIndex) {
-  // signIndex: 1=Aries..12=Pisces (or 0-based with offset)
+  // signIndex: 0=Aries..11=Pisces
   static const char* signs[] = {
     "\xe2\x99\x88",  // ♈ Aries   U+2648
     "\xe2\x99\x89",  // ♉ Taurus  U+2649
@@ -47,7 +47,6 @@ inline const char* sign(int signIndex) {
     "\xe2\x99\x92",  // ♒ Aquar.  U+2652
     "\xe2\x99\x93",  // ♓ Pisces  U+2653
   };
-  if (signIndex >= 1 && signIndex <= 12) return signs[signIndex - 1];
   if (signIndex >= 0 && signIndex < 12) return signs[signIndex];
   return "?";
 }

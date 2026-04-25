@@ -18,4 +18,14 @@ ThemePreset luxuryDark() {
   return {"Luxury Dark", {20,18,22}, {212,204,188}, {128,116,86}, {199,168,92}, {232,228,220}, 1.0, 1.8, 2.8};
 }
 
+ThemePreset themePresetByIndex(int index) {
+  switch (index) {
+    case 0: return textbookLight();
+    case 1: return textbookMonochrome();
+    case 2: return luxuryLight();
+    case 3: return luxuryDark();
+    default: return textbookLight();
+  }
+}
+
 }  // namespace asteria::render

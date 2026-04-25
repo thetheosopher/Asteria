@@ -47,6 +47,7 @@ struct TextElement {
 struct ChartScene {
   int width = 1000;
   int height = 1000;
+  Color background{255, 255, 255};
   std::vector<CircleElement> circles;
   std::vector<LineElement> lines;
   std::vector<TextElement> texts;

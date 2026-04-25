@@ -37,6 +37,8 @@ class CompareWorkspacePanel {
   int  personA_     = 0;
   int  personB_     = 0;
   int  compareMode_ = 0;  // 0=Synastry, 1=Composite
+  int  exportPngProfile_ = 0;
+  int  exportLayoutTemplate_ = 0;
   std::string statusMessage_;
 
   std::optional<domain::ComputedChart> m_chartA;

@@ -1,11 +1,17 @@
 #include "chart_workspace_panel.h"
 #include "ai_interpretation_panel.h"
 #include "app_context.h"
+#include "astrology_font.h"
+#include "export_options.h"
+#include "file_dialog.h"
+#include "markdown_render.h"
 #include "core/birth_event_resolver.h"
+#include "render/export_layout_templates.h"
 #include "render/natal_chart_layout.h"
 #include "render/transit_chart_layout.h"
 #include "render/astro_glyphs.h"
 #include "imgui.h"
+#include <array>
 #include <cmath>
 #include <sstream>
 #include <algorithm>
@@ -20,6 +26,33 @@
 namespace asteria::ui {
 
 namespace {
+
+ImVec2 polarPoint(float cx, float cy, float radius, float angle) {
+  return ImVec2(cx + radius * cosf(angle), cy + radius * sinf(angle));
+}
+
+ImVec2 radialUnit(float angle) {
+  return ImVec2(cosf(angle), sinf(angle));
+}
+
+ImVec2 tangentUnit(float angle) {
+  return ImVec2(-sinf(angle), cosf(angle));
+}
+
+float angleDistance(float a, float b) {
+  return std::fabs(std::atan2(std::sin(a - b), std::cos(a - b)));
+}
+
+bool shouldRenderOnWheel(const std::string& objectId) {
+  static const std::array<const char*, 10> kWheelObjects = {
+      "Sun", "Moon", "Mercury", "Venus", "Mars",
+      "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+  };
+  for (const char* name : kWheelObjects) {
+    if (objectId == name) return true;
+  }
+  return false;
+}
 
 // Element band colors (with alpha for sign ring fill)
 ImU32 elementColor(render::glyphs::Element e, int alpha = 30) {
@@ -87,11 +120,14 @@ void spreadPlanetAngles(std::vector<PlacedPlanet>& planets, float minSepRad) {
   }
 }
 
-void drawAspectLines(ImDrawList* drawList, float cx, float cy, float r,
+void drawAspectLines(ImDrawList* drawList, float cx, float cy, float anchorR,
+                     float endpointRadius,
                      const std::optional<domain::ComputedChart>& chart) {
   if (!chart) return;
 
   for (const auto& asp : chart->aspects) {
+    if (!shouldRenderOnWheel(asp.objectA) || !shouldRenderOnWheel(asp.objectB)) continue;
+
     // Find planet positions for the aspect endpoints
     double lonA = -1, lonB = -1;
     for (const auto& p : chart->planets) {
@@ -102,7 +138,6 @@ void drawAspectLines(ImDrawList* drawList, float cx, float cy, float r,
 
     float angA = static_cast<float>(lonA * M_PI / 180.0 - M_PI / 2.0);
     float angB = static_cast<float>(lonB * M_PI / 180.0 - M_PI / 2.0);
-    float innerR = r * 0.45f;
 
     ImU32 color;
     if (asp.aspectType == "Conjunction") color = IM_COL32(220, 200, 60, 160);
@@ -110,10 +145,12 @@ void drawAspectLines(ImDrawList* drawList, float cx, float cy, float r,
     else if (asp.aspectType == "Square" || asp.aspectType == "Opposition") color = IM_COL32(200, 60, 60, 140);
     else color = IM_COL32(120, 120, 160, 100);
 
-    drawList->AddLine(
-        ImVec2(cx + innerR * cosf(angA), cy + innerR * sinf(angA)),
-        ImVec2(cx + innerR * cosf(angB), cy + innerR * sinf(angB)),
-        color, 1.0f);
+    const ImVec2 p1 = polarPoint(cx, cy, anchorR, angA);
+    const ImVec2 p2 = polarPoint(cx, cy, anchorR, angB);
+
+    drawList->AddLine(p1, p2, color, 1.0f);
+    drawList->AddCircleFilled(p1, endpointRadius, color);
+    drawList->AddCircleFilled(p2, endpointRadius, color);
   }
 }
 
@@ -165,9 +202,123 @@ void drawInfoRow(const char* label, const std::string& value, ImU32 labelCol, Im
   ImGui::PopStyleColor();
 }
 
+void pushInfoTableStyles(ImU32 textCol, ImU32 mutedCol, ImU32 accentCol, const ImVec4& panelBg) {
+  const ImVec4 text = ImGui::ColorConvertU32ToFloat4(textCol);
+  const ImVec4 muted = ImGui::ColorConvertU32ToFloat4(mutedCol);
+  const ImVec4 accent = ImGui::ColorConvertU32ToFloat4(accentCol);
+  const ImVec4 rowBg(panelBg.x + 0.015f, panelBg.y + 0.015f, panelBg.z + 0.02f, 1.0f);
+  const ImVec4 rowBgAlt(panelBg.x + 0.03f, panelBg.y + 0.03f, panelBg.z + 0.035f, 1.0f);
+  const ImVec4 border(muted.x, muted.y, muted.z, 0.45f);
+  const ImVec4 headerBg(accent.x, accent.y, accent.z, 0.18f);
+  const ImVec4 headerActive(accent.x, accent.y, accent.z, 0.28f);
+
+  ImGui::PushStyleColor(ImGuiCol_Text, text);
+  ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, headerBg);
+  ImGui::PushStyleColor(ImGuiCol_TableBorderStrong, border);
+  ImGui::PushStyleColor(ImGuiCol_TableBorderLight, border);
+  ImGui::PushStyleColor(ImGuiCol_TableRowBg, rowBg);
+  ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, rowBgAlt);
+  ImGui::PushStyleColor(ImGuiCol_Header, headerBg);
+  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, headerActive);
+  ImGui::PushStyleColor(ImGuiCol_HeaderActive, headerActive);
+}
+
+void popInfoTableStyles() {
+  ImGui::PopStyleColor(9);
+}
+
+std::string signNameForLongitude(double longitude) {
+  static const char* kSignNames[] = {
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+  };
+  int signIndex = static_cast<int>(std::floor(longitude / 30.0)) % 12;
+  if (signIndex < 0) signIndex += 12;
+  return kSignNames[signIndex];
+}
+
+int signIndexForLongitude(double longitude) {
+  int signIndex = static_cast<int>(std::floor(longitude / 30.0)) % 12;
+  if (signIndex < 0) signIndex += 12;
+  return signIndex;
+}
+
+std::string formatLongitudeWithSign(double longitude) {
+  return render::glyphs::formatPosition(longitude, signNameForLongitude(longitude));
+}
+
+void drawLongitudeValue(double longitude, ImU32 glyphCol, ImU32 textCol) {
+  double signDeg = std::fmod(longitude, 30.0);
+  if (signDeg < 0.0) signDeg += 30.0;
+  const int deg = static_cast<int>(signDeg);
+  const int min = static_cast<int>((signDeg - deg) * 60.0);
+  const char* signGlyph = astrology_font::signGlyph(signIndexForLongitude(longitude));
+
+  std::ostringstream prefix;
+  prefix << deg << "\xC2\xB0";
+  std::ostringstream suffix;
+  suffix << std::setw(2) << std::setfill('0') << min << "'";
+
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(textCol));
+  ImGui::TextUnformatted(prefix.str().c_str());
+  ImGui::PopStyleColor();
+  ImGui::SameLine(0.0f, 3.0f);
+  astrology_font::drawInlineGlyphLabel(signGlyph, suffix.str(), glyphCol, textCol, 3.0f);
+}
+
+void drawLongitudeInfoRow(const char* label, double longitude, ImU32 labelCol, ImU32 glyphCol, ImU32 valueCol) {
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(labelCol));
+  ImGui::TextUnformatted(label);
+  ImGui::PopStyleColor();
+  ImGui::SameLine(130.0f);
+  drawLongitudeValue(longitude, glyphCol, valueCol);
+}
+
+void drawPlanetLabelCell(const std::string& objectId, ImU32 glyphCol, ImU32 textCol) {
+  astrology_font::drawInlineGlyphLabel(astrology_font::planetGlyph(objectId), objectId, glyphCol, textCol);
+}
+
+void drawAspectLabelCell(const std::string& aspectType, ImU32 glyphCol, ImU32 textCol) {
+  astrology_font::drawInlineGlyphLabel(astrology_font::aspectGlyph(aspectType), aspectType, glyphCol, textCol);
+}
+
+int parseSettingIndex(const AppContext& ctx, const char* key, int fallback, int maxExclusive) {
+  int value = fallback;
+  try { value = std::stoi(ctx.getSetting(key, std::to_string(fallback))); }
+  catch (...) { value = fallback; }
+  if (value < 0 || value >= maxExclusive) return fallback;
+  return value;
+}
+
+std::optional<double> findHouseLongitude(const domain::ComputedChart& chart, int houseNumber) {
+  auto it = std::find_if(chart.houseCusps.begin(), chart.houseCusps.end(),
+                         [&](const domain::HouseCusp& cusp) {
+                           return cusp.houseNumber == houseNumber;
+                         });
+  if (it == chart.houseCusps.end()) return std::nullopt;
+  return it->longitudeDegrees;
+}
+
+std::string birthTimeLabel(const domain::BirthEvent& birthEvent) {
+  if (birthEvent.birthTime && !birthEvent.birthTime->empty()) return *birthEvent.birthTime;
+  if (birthEvent.noonDefaultApplied) return "12:00 (defaulted)";
+  return "Unknown";
+}
+
+std::string chartTypeLabel(int chartTypeIndex) {
+  return chartTypeIndex == 0 ? "Natal" : "Transit-to-Natal";
+}
+
+std::string formatLongitudePlain(double longitude) {
+  return render::glyphs::formatDegMin(longitude) + " " + signNameForLongitude(longitude);
+}
+
 }  // anonymous namespace
 
-ChartWorkspacePanel::ChartWorkspacePanel(AppContext& ctx) : m_ctx(ctx) {}
+ChartWorkspacePanel::ChartWorkspacePanel(AppContext& ctx) : m_ctx(ctx) {
+  exportPngProfile_ = parseSettingIndex(m_ctx, "default_export_png_profile", 0, 3);
+  exportLayoutTemplate_ = parseSettingIndex(m_ctx, "default_export_layout", 0, 2);
+}
 
 void ChartWorkspacePanel::setSelectedPerson(std::int64_t personId) {
   if (m_personId == personId) return;
@@ -179,16 +330,20 @@ void ChartWorkspacePanel::setSelectedPerson(std::int64_t personId) {
   m_hasScene = false;
   interpretationText_.clear();
   statusMessage_.clear();
+
+  if (m_personId <= 0) {
+    m_focusOnNextDraw = false;
+    return;
+  }
+
+  currentChartType_ = 0;
+  open = true;
+  m_focusOnNextDraw = true;
+  computeChart();
 }
 
 render::ThemePreset ChartWorkspacePanel::currentThemePreset() const {
-  switch (currentTheme_) {
-    case 0: return render::textbookLight();
-    case 1: return render::textbookMonochrome();
-    case 2: return render::luxuryLight();
-    case 3: return render::luxuryDark();
-    default: return render::textbookLight();
-  }
+  return render::themePresetByIndex(parseSettingIndex(m_ctx, "default_theme", 0, 4));
 }
 
 void ChartWorkspacePanel::computeChart() {
@@ -325,6 +480,11 @@ void ChartWorkspacePanel::drawChartCanvas() {
   float signInR  = maxR * 0.85f;
   float houseOutR = maxR * 0.65f;
   float innerR   = maxR * 0.30f;
+  float aspectAnchorR = houseOutR - maxR * 0.035f;
+  float planetR = houseOutR + (signInR - houseOutR) * 0.40f;
+  float degreeLabelR = planetR - maxR * 0.048f;
+  float leaderStartR = planetR - maxR * 0.03f;
+  float endpointDotR = std::max(2.0f, maxR * 0.007f);
 
   // --- Element-colored sign bands ---
   for (int i = 0; i < 12; ++i) {
@@ -343,8 +503,7 @@ void ChartWorkspacePanel::drawChartCanvas() {
 
   // --- Sign division lines and glyph labels ---
   // Try to use the larger font (index 1) for glyph labels
-  ImFont* glyphFont = (ImGui::GetIO().Fonts->Fonts.Size > 1)
-                      ? ImGui::GetIO().Fonts->Fonts[1] : nullptr;
+  ImFont* glyphFont = astrology_font::wheelGlyphFont();
   for (int i = 0; i < 12; ++i) {
     float angle = static_cast<float>(i) * 30.0f * static_cast<float>(M_PI) / 180.0f
                   - static_cast<float>(M_PI) / 2.0f;
@@ -357,7 +516,7 @@ void ChartWorkspacePanel::drawChartCanvas() {
     // Sign glyph label centered in the band
     float midAngle = angle + 15.0f * static_cast<float>(M_PI) / 180.0f;
     float labelR = (outerR + signInR) * 0.5f;
-    const char* signGlyph = render::glyphs::sign(i);
+    const char* signGlyph = astrology_font::wheelSignGlyph(i);
     if (glyphFont) {
       drawList->AddText(glyphFont, 20.0f,
           ImVec2(cx + labelR * cosf(midAngle) - 8,
@@ -396,12 +555,16 @@ void ChartWorkspacePanel::drawChartCanvas() {
     }
   }
 
+  // --- Aspect lines inside the wheel ---
+  drawAspectLines(drawList, cx, cy, aspectAnchorR, endpointDotR, m_chart);
+
   // --- Planet glyphs with collision avoidance ---
   if (m_chart) {
     // Build placed-planet list for collision avoidance
     std::vector<PlacedPlanet> placed;
     placed.reserve(m_chart->planets.size());
     for (int i = 0; i < static_cast<int>(m_chart->planets.size()); ++i) {
+      if (!shouldRenderOnWheel(m_chart->planets[i].objectId)) continue;
       float ang = static_cast<float>(m_chart->planets[i].longitudeDegrees * M_PI / 180.0 - M_PI / 2.0);
       placed.push_back({ang, ang, i});
     }
@@ -409,15 +572,15 @@ void ChartWorkspacePanel::drawChartCanvas() {
     float minSep = 12.0f * static_cast<float>(M_PI) / 180.0f;
     spreadPlanetAngles(placed, minSep);
 
-    float planetR = (signInR + houseOutR) * 0.5f;    // glyph ring
     float tickR   = houseOutR + 4.0f;                 // inner end of tick mark
     float tickEndR = signInR - 4.0f;                  // outer end of tick mark
 
     for (const auto& pp : placed) {
       const auto& planet = m_chart->planets[pp.index];
       float ang = pp.placedAngle;
-      float px = cx + planetR * cosf(ang);
-      float py = cy + planetR * sinf(ang);
+      const ImVec2 glyphPos = polarPoint(cx, cy, planetR, ang);
+      const ImVec2 radial = radialUnit(ang);
+      const ImVec2 tangent = tangentUnit(ang);
 
       // Tick mark at true position (thin line from house ring to sign ring)
       float trueAng = pp.originalAngle;
@@ -426,27 +589,48 @@ void ChartWorkspacePanel::drawChartCanvas() {
           ImVec2(cx + tickEndR * cosf(trueAng), cy + tickEndR * sinf(trueAng)),
           accentCol, 1.0f);
 
+      // If the glyph was displaced for collision avoidance, draw a subtle leader
+      // from the true longitude marker toward the shifted glyph.
+      if (angleDistance(ang, trueAng) > (2.0f * static_cast<float>(M_PI) / 180.0f)) {
+        const ImVec2 leaderStart = polarPoint(cx, cy, leaderStartR, trueAng);
+        const ImVec2 leaderEnd(glyphPos.x - radial.x * 8.0f,
+                               glyphPos.y - radial.y * 8.0f);
+        drawList->AddLine(leaderStart, leaderEnd, secondaryCol, 1.0f);
+      }
+
       // Planet glyph
-      const char* glyph = render::glyphs::planet(planet.objectId);
+      const char* glyph = astrology_font::wheelPlanetGlyph(planet.objectId);
       if (glyph && glyphFont) {
         drawList->AddText(glyphFont, 20.0f,
-            ImVec2(px - 8, py - 10), accentCol, glyph);
+            ImVec2(glyphPos.x - 8, glyphPos.y - 10), accentCol, glyph);
       } else if (glyph) {
-        drawList->AddText(ImVec2(px - 6, py - 6), accentCol, glyph);
+        drawList->AddText(ImVec2(glyphPos.x - 6, glyphPos.y - 6), accentCol, glyph);
       } else {
         // Fallback: first 2 chars
         std::string label = planet.objectId.substr(0, 2);
-        drawList->AddText(ImVec2(px - 6, py - 6), accentCol, label.c_str());
+        drawList->AddText(ImVec2(glyphPos.x - 6, glyphPos.y - 6), accentCol, label.c_str());
       }
 
-      // Degree/minute label below the glyph
+      // Degree/minute label on a dedicated inner radial ring so the stack stays
+      // visually aligned at every angle.
       std::string degLabel = render::glyphs::formatDegMin(planet.longitudeDegrees);
-      drawList->AddText(ImVec2(px - 12, py + 8), dimTextCol, degLabel.c_str());
+      const ImVec2 degreePos = polarPoint(cx, cy, degreeLabelR, ang);
+      drawList->AddText(ImVec2(degreePos.x - 12, degreePos.y - 5), dimTextCol, degLabel.c_str());
 
-      // Retrograde marker
+      // Retrograde marker offset tangentially so it doesn't collapse into the
+      // degree label when the planet stack rotates around the wheel.
       if (planet.retrograde) {
-        drawList->AddText(ImVec2(px + 10, py - 10),
-            IM_COL32(200, 60, 60, 200), "R");
+        const ImVec2 retrogradePos(glyphPos.x + radial.x * 4.0f + tangent.x * 11.0f,
+                                   glyphPos.y + radial.y * 4.0f + tangent.y * 11.0f);
+        const char* retrogradeGlyph = astrology_font::wheelRetrogradeGlyph();
+        if (astrology_font::usingLegacyWheelFont() && glyphFont) {
+          drawList->AddText(glyphFont, 15.0f,
+              ImVec2(retrogradePos.x - 4.0f, retrogradePos.y - 7.0f),
+              IM_COL32(200, 60, 60, 200), retrogradeGlyph);
+        } else {
+          drawList->AddText(ImVec2(retrogradePos.x - 3.0f, retrogradePos.y - 5.0f),
+              IM_COL32(200, 60, 60, 200), retrogradeGlyph);
+        }
       }
     }
   } else {
@@ -455,17 +639,10 @@ void ChartWorkspacePanel::drawChartCanvas() {
         "Select a person and click Compute");
   }
 
-  // --- Aspect lines inside the inner circle ---
-  drawAspectLines(drawList, cx, cy, maxR, m_chart);
-
   // --- Title overlay ---
-  if (m_chart) {
-    std::string title = m_chart->houseSystem + " / " + m_chart->zodiacMode;
-    drawList->AddText(ImVec2(canvasPos.x + 10, canvasPos.y + 10), textCol, title.c_str());
-    if (!m_chart->uncertaintyFlags.empty()) {
-      drawList->AddText(ImVec2(canvasPos.x + 10, canvasPos.y + 28),
-          IM_COL32(220, 160, 60, 255), "Warning: uncertain birth time");
-    }
+  if (m_chart && !m_chart->uncertaintyFlags.empty()) {
+    drawList->AddText(ImVec2(canvasPos.x + 10, canvasPos.y + 10),
+        IM_COL32(220, 160, 60, 255), "Warning: uncertain birth time");
   }
 
   ImGui::Dummy(canvasSize);
@@ -549,7 +726,26 @@ void ChartWorkspacePanel::drawInfoSidePanel() {
   }
   endSectionHeader();
 
+  drawSectionHeader("Angles", accentCol, textCol);
+  if (m_chart && !m_chart->houseCusps.empty()) {
+    auto drawAngle = [&](const char* label, int houseNumber) {
+      auto it = std::find_if(m_chart->houseCusps.begin(), m_chart->houseCusps.end(),
+                             [&](const domain::HouseCusp& cusp) {
+                               return cusp.houseNumber == houseNumber;
+                             });
+      if (it != m_chart->houseCusps.end()) {
+        drawLongitudeInfoRow(label, it->longitudeDegrees, mutedCol, accentCol, textCol);
+      }
+    };
+    drawAngle("Ascendant", 1);
+    drawAngle("IC", 4);
+    drawAngle("Descendant", 7);
+    drawAngle("Midheaven", 10);
+  }
+  endSectionHeader();
+
   drawSectionHeader("Object Positions", accentCol, textCol);
+  pushInfoTableStyles(textCol, mutedCol, accentCol, panelBg);
   if (m_chart && ImGui::BeginTable("PlanetPositions", 4,
         ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
         ImVec2(-1, 220))) {
@@ -562,11 +758,10 @@ void ChartWorkspacePanel::drawInfoSidePanel() {
     for (const auto& planet : m_chart->planets) {
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex(0);
-      std::string body = std::string(render::glyphs::planet(planet.objectId) ? render::glyphs::planet(planet.objectId) : "") + " " + planet.objectId;
-      ImGui::TextUnformatted(body.c_str());
+      drawPlanetLabelCell(planet.objectId, accentCol, textCol);
 
       ImGui::TableSetColumnIndex(1);
-      ImGui::TextUnformatted(render::glyphs::formatPosition(planet.longitudeDegrees, planet.sign).c_str());
+      drawLongitudeValue(planet.longitudeDegrees, accentCol, textCol);
 
       ImGui::TableSetColumnIndex(2);
       if (planet.house) ImGui::Text("%d", *planet.house);
@@ -580,9 +775,45 @@ void ChartWorkspacePanel::drawInfoSidePanel() {
     }
     ImGui::EndTable();
   }
+  popInfoTableStyles();
   endSectionHeader();
 
-  if (m_chart && ImGui::CollapsingHeader("House Cusps", ImGuiTreeNodeFlags_DefaultOpen)) {
+  drawSectionHeader("Major Aspects", accentCol, textCol);
+  pushInfoTableStyles(textCol, mutedCol, accentCol, panelBg);
+  if (m_chart && ImGui::BeginTable("AspectTable", 5,
+        ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
+        ImVec2(-1, 170))) {
+    ImGui::TableSetupColumn("A", ImGuiTableColumnFlags_WidthStretch, 1.2f);
+    ImGui::TableSetupColumn("Aspect", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+    ImGui::TableSetupColumn("B", ImGuiTableColumnFlags_WidthStretch, 1.2f);
+    ImGui::TableSetupColumn("Orb", ImGuiTableColumnFlags_WidthFixed, 52.0f);
+    ImGui::TableSetupColumn("Phase", ImGuiTableColumnFlags_WidthFixed, 72.0f);
+    ImGui::TableHeadersRow();
+
+    if (m_chart) {
+      for (const auto& asp : m_chart->aspects) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        drawPlanetLabelCell(asp.objectA, accentCol, textCol);
+        ImGui::TableSetColumnIndex(1);
+        drawAspectLabelCell(asp.aspectType, accentCol, textCol);
+        ImGui::TableSetColumnIndex(2);
+        drawPlanetLabelCell(asp.objectB, accentCol, textCol);
+        ImGui::TableSetColumnIndex(3);
+        ImGui::Text("%.2f", asp.orbDegrees);
+        ImGui::TableSetColumnIndex(4);
+        if (asp.applyingOrSeparating) ImGui::TextUnformatted(asp.applyingOrSeparating->c_str());
+        else ImGui::TextDisabled("-");
+      }
+    }
+    ImGui::EndTable();
+  }
+  popInfoTableStyles();
+  endSectionHeader();
+
+  drawSectionHeader("House Cusps", accentCol, textCol);
+  pushInfoTableStyles(textCol, mutedCol, accentCol, panelBg);
+  if (m_chart && ImGui::CollapsingHeader("House Cusps Table", ImGuiTreeNodeFlags_DefaultOpen)) {
     if (ImGui::BeginTable("HouseCusps", 2,
           ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
           ImVec2(-1, 180))) {
@@ -594,23 +825,23 @@ void ChartWorkspacePanel::drawInfoSidePanel() {
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("%d", cusp.houseNumber);
         ImGui::TableSetColumnIndex(1);
-        ImGui::TextUnformatted(render::glyphs::formatDegMin(cusp.longitudeDegrees).c_str());
+        drawLongitudeValue(cusp.longitudeDegrees, accentCol, textCol);
       }
       ImGui::EndTable();
     }
   }
+  popInfoTableStyles();
+  endSectionHeader();
 
-  if (showInterpretation_) {
-    drawSectionHeader("Interpretation", accentCol, textCol);
-    if (interpretationText_.empty()) {
-      ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(mutedCol));
-      ImGui::TextWrapped("Compute the chart to see interpretation notes here.");
-      ImGui::PopStyleColor();
-    } else {
-      ImGui::TextWrapped("%s", interpretationText_.c_str());
-    }
-    endSectionHeader();
+  drawSectionHeader("Interpretation", accentCol, textCol);
+  if (interpretationText_.empty()) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(mutedCol));
+    ImGui::TextWrapped("Compute the chart to see interpretation notes here.");
+    ImGui::PopStyleColor();
+  } else {
+    markdown_render::renderMarkdown(interpretationText_);
   }
+  endSectionHeader();
 
   ImGui::EndChild();
 }
@@ -618,7 +849,14 @@ void ChartWorkspacePanel::drawInfoSidePanel() {
 void ChartWorkspacePanel::draw() {
   if (!open) return;
   ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
+  if (m_focusOnNextDraw) {
+    ImGui::SetNextWindowFocus();
+  }
   if (!ImGui::Begin("Chart Workspace", &open)) { ImGui::End(); return; }
+  m_focusOnNextDraw = false;
+
+  exportPngProfile_ = parseSettingIndex(m_ctx, "default_export_png_profile", 0, 3);
+  exportLayoutTemplate_ = parseSettingIndex(m_ctx, "default_export_layout", 0, 2);
 
   // Toolbar
   const char* chartTypes[] = {"Natal", "Transit-to-Natal"};
@@ -626,33 +864,155 @@ void ChartWorkspacePanel::draw() {
   ImGui::Combo("Chart Type", &currentChartType_, chartTypes, IM_ARRAYSIZE(chartTypes));
   ImGui::SameLine();
 
-  const char* themes[] = {"Textbook Light", "Textbook Mono", "Luxury Light", "Luxury Dark"};
-  ImGui::SetNextItemWidth(160);
-  ImGui::Combo("Theme", &currentTheme_, themes, IM_ARRAYSIZE(themes));
-  ImGui::SameLine();
-
   if (ImGui::Button("Compute")) {
     computeChart();
   }
   ImGui::SameLine();
 
-  bool canExport = m_hasScene;
-  if (!canExport) ImGui::BeginDisabled();
-  if (ImGui::Button("Export SVG")) {
-    auto theme = currentThemePreset();
-    auto result = m_ctx.exportService.exportSvg(
-        m_scene, m_chart ? m_chart->computedChartId : 0,
-        "natal_chart.svg", theme);
-    if (result.ok()) {
-      statusMessage_ = "Exported: " + result.value().filePath;
-    } else {
-      statusMessage_ = "Export failed: " + result.error().message;
+  const bool canCopy = m_chart.has_value();
+  if (!canCopy) ImGui::BeginDisabled();
+  if (ImGui::Button("Copy Chart Text")) {
+    const std::string clipboardText = buildClipboardText();
+    if (!clipboardText.empty()) {
+      ImGui::SetClipboardText(clipboardText.c_str());
+      statusMessage_ = "Chart text copied to clipboard.";
     }
   }
-  if (!canExport) ImGui::EndDisabled();
-
+  if (!canCopy) ImGui::EndDisabled();
   ImGui::SameLine();
-  ImGui::Checkbox("Interpretation", &showInterpretation_);
+
+  bool canExport = m_hasScene;
+  if (!canExport) ImGui::BeginDisabled();
+
+  const int preferredExportFormat = parseSettingIndex(m_ctx, "default_export_format", 0, 2);
+
+  auto buildSceneForExport = [&]() {
+    const auto theme = currentThemePreset();
+    render::ChartScene scene = (m_chart && m_hasScene)
+        ? render::buildNatalChartScene(*m_chart, theme)
+        : m_scene;
+    if (exportLayoutTemplate_ == static_cast<int>(ExportLayoutTemplate::ReferenceSheet)) {
+      std::vector<render::ReferenceSheetSection> sections;
+      if (m_person) {
+        sections.push_back({"Subject", {
+            {"Name", m_person->fullName},
+            {"Display", m_person->displayName.empty() ? m_person->fullName : m_person->displayName},
+            {"Chart", currentChartType_ == 0 ? "Natal" : "Transit to Natal"},
+        }});
+      }
+      if (m_birthEvent) {
+        sections.push_back({"Birth", {
+            {"Date", m_birthEvent->birthDate.empty() ? currentDateTag() : m_birthEvent->birthDate},
+            {"Time", birthTimeLabel(*m_birthEvent)},
+            {"Accuracy", timeAccuracyLabel(m_birthEvent->timeAccuracy)},
+        }});
+      }
+      if (m_location) {
+        sections.push_back({"Location", {
+            {"Place", m_location->displayName},
+            {"Latitude", formatCoord(m_location->latitude, true)},
+            {"Longitude", formatCoord(m_location->longitude, false)},
+            {"Timezone", m_location->timezoneName},
+        }});
+      }
+      if (m_chart) {
+        render::ReferenceSheetSection chartSection{"Chart Facts", {
+            {"House System", m_chart->houseSystem},
+            {"Zodiac", m_chart->zodiacMode},
+            {"Planets", std::to_string(m_chart->planets.size())},
+            {"Aspects", std::to_string(m_chart->aspects.size())},
+        }};
+        if (auto asc = findHouseLongitude(*m_chart, 1)) chartSection.facts.push_back({"Asc", formatLongitudeWithSign(*asc)});
+        if (auto mc = findHouseLongitude(*m_chart, 10)) chartSection.facts.push_back({"MC", formatLongitudeWithSign(*mc)});
+        sections.push_back(chartSection);
+
+        render::ReferenceSheetSection planetSection{"Objects", {}};
+        for (const auto& planet : m_chart->planets) {
+          planetSection.facts.push_back({planet.objectId, formatLongitudeWithSign(planet.longitudeDegrees)});
+        }
+        sections.push_back(std::move(planetSection));
+      }
+
+      const std::string title = m_person
+          ? (m_person->displayName.empty() ? m_person->fullName : m_person->displayName)
+          : std::string("Asteria Chart");
+      const std::string subtitle = m_chart
+          ? (m_chart->houseSystem + " / " + m_chart->zodiacMode)
+          : std::string();
+      const std::string footer = m_birthEvent && !m_birthEvent->birthDate.empty()
+          ? ("Birth date: " + m_birthEvent->birthDate)
+          : std::string("Asteria export");
+      scene = render::buildReferenceSheetScene(scene, theme, title, subtitle, footer, sections);
+    }
+    return scene;
+  };
+
+  auto buildExportMetadata = [&](const std::string& profileName) {
+    core::ExportMetadata metadata;
+    metadata.chartType = currentChartType_ == 0 ? "natal" : "transit_to_natal";
+    metadata.exportProfile = profileName;
+    metadata.layoutTemplate = exportLayoutTemplate_ == 0 ? "chart_only" : "reference_sheet";
+    metadata.dateTag = m_birthEvent && !m_birthEvent->birthDate.empty() ? m_birthEvent->birthDate : currentDateTag();
+    metadata.hasWarnings = m_chart && !m_chart->uncertaintyFlags.empty();
+    return metadata;
+  };
+
+  auto buildDefaultName = [&](const std::string& extension) {
+    const std::string subject = m_person
+        ? (m_person->displayName.empty() ? m_person->fullName : m_person->displayName)
+        : std::string("chart");
+    const std::string chartType = currentChartType_ == 0 ? "natal" : "transit_to_natal";
+    const std::string dateTag = m_birthEvent && !m_birthEvent->birthDate.empty() ? m_birthEvent->birthDate : currentDateTag();
+    return buildRecommendedExportFileName(subject, chartType, dateTag, currentThemePreset().name, extension);
+  };
+
+  auto exportSvgAction = [&]() {
+    auto path = showSaveFileDialog(
+        L"Export Natal Chart",
+        buildDefaultName("svg"),
+        L"SVG Files (*.svg)\0*.svg\0All Files (*.*)\0*.*\0\0",
+        L"svg");
+    if (!path) return;
+
+    auto theme = currentThemePreset();
+    auto scene = buildSceneForExport();
+    auto metadata = buildExportMetadata("vector");
+    auto result = m_ctx.exportService.exportSvg(
+        scene, m_chart ? m_chart->computedChartId : 0,
+        *path, theme, metadata);
+    statusMessage_ = result.ok() ? "Exported: " + result.value().filePath
+                                 : "Export failed: " + result.error().message;
+  };
+
+  auto exportPngAction = [&]() {
+    auto path = showSaveFileDialog(
+        L"Export Natal Chart PNG",
+        buildDefaultName("png"),
+        L"PNG Files (*.png)\0*.png\0All Files (*.*)\0*.*\0\0",
+        L"png");
+    if (!path) return;
+
+    auto theme = currentThemePreset();
+    auto scene = buildSceneForExport();
+    const auto spec = exportPngProfileSpec(static_cast<ExportPngProfile>(exportPngProfile_));
+    auto metadata = buildExportMetadata(exportPngProfileLabel(static_cast<ExportPngProfile>(exportPngProfile_)));
+    auto result = m_ctx.exportService.exportPng(
+        scene, m_chart ? m_chart->computedChartId : 0,
+        *path, spec.widthPx, spec.heightPx, spec.dpi, theme, metadata);
+    statusMessage_ = result.ok() ? "Exported: " + result.value().filePath
+                                 : "Export failed: " + result.error().message;
+  };
+
+  if (preferredExportFormat == 1) {
+    if (ImGui::Button("Export PNG")) exportPngAction();
+    ImGui::SameLine();
+    if (ImGui::Button("Export SVG")) exportSvgAction();
+  } else {
+    if (ImGui::Button("Export SVG")) exportSvgAction();
+    ImGui::SameLine();
+    if (ImGui::Button("Export PNG")) exportPngAction();
+  }
+  if (!canExport) ImGui::EndDisabled();
 
   // Status line
   if (!statusMessage_.empty()) {
@@ -676,6 +1036,88 @@ void ChartWorkspacePanel::draw() {
   ImGui::EndChild();
 
   ImGui::End();
+}
+
+std::string ChartWorkspacePanel::buildClipboardText() const {
+  if (!m_chart) return {};
+
+  std::ostringstream out;
+  out << "Asteria Chart Information\n\n";
+  out << "Chart Type: " << chartTypeLabel(currentChartType_) << '\n';
+
+  if (m_person) {
+    out << "Name: " << (m_person->displayName.empty() ? m_person->fullName : m_person->displayName) << '\n';
+  }
+
+  if (m_birthEvent) {
+    out << "Birth Date: " << (m_birthEvent->birthDate.empty() ? "Unknown" : m_birthEvent->birthDate) << '\n';
+    out << "Birth Time: " << birthTimeLabel(*m_birthEvent) << '\n';
+    out << "Time Accuracy: " << timeAccuracyLabel(m_birthEvent->timeAccuracy) << '\n';
+  }
+
+  if (m_birthEvent || m_location) {
+    const std::string locationName = m_location ? m_location->displayName :
+        (m_birthEvent && !m_birthEvent->cityInput.empty() ? m_birthEvent->cityInput : std::string("Unknown"));
+    const double latitude = m_location ? m_location->latitude :
+        (m_birthEvent && m_birthEvent->latitudeDeg ? *m_birthEvent->latitudeDeg : 0.0);
+    const double longitude = m_location ? m_location->longitude :
+        (m_birthEvent && m_birthEvent->longitudeDeg ? *m_birthEvent->longitudeDeg : 0.0);
+    std::string zoneName = m_location ? m_location->timezoneName :
+        (m_birthEvent && m_birthEvent->timezoneName ? *m_birthEvent->timezoneName : std::string());
+    if (zoneName.empty()) zoneName = "Manual / unresolved";
+
+    out << "Place: " << locationName << '\n';
+    out << "Latitude: " << formatCoord(latitude, true) << '\n';
+    out << "Longitude: " << formatCoord(longitude, false) << '\n';
+    out << "Time Zone: " << zoneName << '\n';
+    if (m_birthEvent && m_birthEvent->timezoneOffsetHours) {
+      out << "UTC Offset: " << formatUtcOffset(*m_birthEvent->timezoneOffsetHours) << '\n';
+    }
+    if (m_birthEvent && m_birthEvent->dstOffsetHours) {
+      out << "DST Offset: " << *m_birthEvent->dstOffsetHours << "h\n";
+    }
+  }
+
+  out << "\nChart Settings:\n";
+  out << "- House System: " << m_chart->houseSystem << '\n';
+  out << "- Zodiac: " << m_chart->zodiacMode << '\n';
+  out << "- Engine: " << (m_chart->engineMethod.empty() ? "Astrolog" : m_chart->engineMethod) << '\n';
+
+  if (!m_chart->uncertaintyFlags.empty()) {
+    out << "\nWarnings:\n";
+    for (const auto& warning : m_chart->uncertaintyFlags) {
+      out << "- " << warning << '\n';
+    }
+  }
+
+  out << "\nAngles:\n";
+  for (const auto houseNumber : {1, 4, 7, 10}) {
+    if (auto longitude = findHouseLongitude(*m_chart, houseNumber)) {
+      const char* label = houseNumber == 1 ? "Ascendant" :
+                          houseNumber == 4 ? "IC" :
+                          houseNumber == 7 ? "Descendant" : "Midheaven";
+      out << "- " << label << ": " << formatLongitudePlain(*longitude) << '\n';
+    }
+  }
+
+  out << "\nPlanetary Positions:\n";
+  for (const auto& planet : m_chart->planets) {
+    out << "- " << planet.objectId << " in " << planet.sign;
+    if (planet.house) out << " (House " << *planet.house << ")";
+    out << " at " << render::glyphs::formatDegMin(planet.longitudeDegrees);
+    if (planet.retrograde) out << " (Rx)";
+    out << '\n';
+  }
+
+  out << "\nMajor Aspects:\n";
+  for (const auto& asp : m_chart->aspects) {
+    out << "- " << asp.objectA << ' ' << asp.aspectType << ' ' << asp.objectB;
+    out << " (orb: " << std::fixed << std::setprecision(2) << asp.orbDegrees;
+    if (asp.applyingOrSeparating) out << ", " << *asp.applyingOrSeparating;
+    out << ")\n";
+  }
+
+  return out.str();
 }
 
 }  // namespace asteria::ui

@@ -9,11 +9,17 @@ namespace asteria::ui {
 
 SettingsPanel::SettingsPanel(AppContext& ctx) : m_ctx(ctx) {}
 
+void SettingsPanel::ensureLoaded() {
+  if (!m_loaded) loadSettings();
+}
+
 void SettingsPanel::loadSettings() {
   defaultTheme_       = std::stoi(m_ctx.getSetting("default_theme", "0"));
   defaultHouseSystem_ = std::stoi(m_ctx.getSetting("default_house_system", "0"));
   unknownTimePolicy_  = std::stoi(m_ctx.getSetting("unknown_time_policy", "0"));
   defaultExportFormat_= std::stoi(m_ctx.getSetting("default_export_format", "0"));
+  defaultExportPngProfile_ = std::stoi(m_ctx.getSetting("default_export_png_profile", "0"));
+  defaultExportLayout_ = std::stoi(m_ctx.getSetting("default_export_layout", "0"));
   ollamaEnabled_      = m_ctx.getSetting("ollama_enabled", "0") == "1";
   auto endpoint       = m_ctx.getSetting("ollama_endpoint", "http://localhost:11434");
   std::strncpy(ollamaEndpoint_, endpoint.c_str(), sizeof(ollamaEndpoint_) - 1);
@@ -28,102 +34,122 @@ void SettingsPanel::loadSettings() {
   m_dirty = false;
 }
 
-void SettingsPanel::saveSettings() {
-  m_ctx.setSetting("default_theme", std::to_string(defaultTheme_));
-  m_ctx.setSetting("default_house_system", std::to_string(defaultHouseSystem_));
-  m_ctx.setSetting("unknown_time_policy", std::to_string(unknownTimePolicy_));
-  m_ctx.setSetting("default_export_format", std::to_string(defaultExportFormat_));
-  m_ctx.setSetting("ollama_enabled", ollamaEnabled_ ? "1" : "0");
-  m_ctx.setSetting("ollama_endpoint", ollamaEndpoint_);
-  if (ollamaModelIndex_ >= 0 && ollamaModelIndex_ < static_cast<int>(ollamaModels_.size()))
-    m_ctx.setSetting("ollama_model", ollamaModels_[ollamaModelIndex_]);
-  m_dirty = false;
-}
-
 void SettingsPanel::draw() {
   if (!open) return;
-  if (!m_loaded) loadSettings();
-
-  ImGui::SetNextWindowSize(ImVec2(450, 400), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize(ImVec2(420, 120), ImGuiCond_FirstUseEver);
   if (!ImGui::Begin("Settings", &open)) { ImGui::End(); return; }
+  ImGui::TextWrapped("Settings have moved to the View menu. Use the Theme, Chart Defaults, Export Defaults, and Interpretation submenus there.");
+  ImGui::End();
+}
 
-  ImGui::Text("Application Settings");
-  ImGui::Separator();
+void SettingsPanel::drawViewMenuContents() {
+  ensureLoaded();
 
-  // Theme
-  const char* themes[] = {"Textbook Light", "Textbook Monochrome",
-                           "Luxury Light", "Luxury Dark"};
-  if (ImGui::Combo("Default Theme", &defaultTheme_, themes, IM_ARRAYSIZE(themes)))
-    m_dirty = true;
+  if (ImGui::BeginMenu("Theme")) {
+    const char* themes[] = {"Textbook Light", "Textbook Monochrome", "Luxury Light", "Luxury Dark"};
+    for (int i = 0; i < IM_ARRAYSIZE(themes); ++i) {
+      if (ImGui::MenuItem(themes[i], nullptr, defaultTheme_ == i)) {
+        defaultTheme_ = i;
+        m_ctx.setSetting("default_theme", std::to_string(defaultTheme_));
+      }
+    }
+    ImGui::EndMenu();
+  }
 
-  // House system
-  const char* houseSystems[] = {"Placidus", "Koch", "Equal", "Whole Sign",
-                                 "Campanus", "Regiomontanus"};
-  if (ImGui::Combo("House System", &defaultHouseSystem_,
-               houseSystems, IM_ARRAYSIZE(houseSystems)))
-    m_dirty = true;
+  if (ImGui::BeginMenu("Chart Defaults")) {
+    const char* houseSystems[] = {"Placidus", "Koch", "Equal", "Whole Sign", "Campanus", "Regiomontanus"};
+    if (ImGui::BeginMenu("House System")) {
+      for (int i = 0; i < IM_ARRAYSIZE(houseSystems); ++i) {
+        if (ImGui::MenuItem(houseSystems[i], nullptr, defaultHouseSystem_ == i)) {
+          defaultHouseSystem_ = i;
+          m_ctx.setSetting("default_house_system", std::to_string(defaultHouseSystem_));
+        }
+      }
+      ImGui::EndMenu();
+    }
 
-  // Unknown time policy
-  const char* timePolicies[] = {"Noon Default (no houses)",
-                                 "Noon Default (keep houses)",
-                                 "Prompt User"};
-  if (ImGui::Combo("Unknown Time Policy", &unknownTimePolicy_,
-               timePolicies, IM_ARRAYSIZE(timePolicies)))
-    m_dirty = true;
+    const char* timePolicies[] = {"Noon Default (no houses)", "Noon Default (keep houses)", "Prompt User"};
+    if (ImGui::BeginMenu("Unknown Time Policy")) {
+      for (int i = 0; i < IM_ARRAYSIZE(timePolicies); ++i) {
+        if (ImGui::MenuItem(timePolicies[i], nullptr, unknownTimePolicy_ == i)) {
+          unknownTimePolicy_ = i;
+          m_ctx.setSetting("unknown_time_policy", std::to_string(unknownTimePolicy_));
+        }
+      }
+      ImGui::EndMenu();
+    }
+    ImGui::EndMenu();
+  }
 
-  ImGui::Separator();
-  ImGui::Text("Export");
-  const char* exportFormats[] = {"SVG", "PNG"};
-  if (ImGui::Combo("Default Export", &defaultExportFormat_,
-               exportFormats, IM_ARRAYSIZE(exportFormats)))
-    m_dirty = true;
+  if (ImGui::BeginMenu("Export Defaults")) {
+    const char* exportFormats[] = {"SVG", "PNG"};
+    if (ImGui::BeginMenu("Preferred Format")) {
+      for (int i = 0; i < IM_ARRAYSIZE(exportFormats); ++i) {
+        if (ImGui::MenuItem(exportFormats[i], nullptr, defaultExportFormat_ == i)) {
+          defaultExportFormat_ = i;
+          m_ctx.setSetting("default_export_format", std::to_string(defaultExportFormat_));
+        }
+      }
+      ImGui::EndMenu();
+    }
 
-  ImGui::Separator();
-  ImGui::Text("Interpretation");
-  if (ImGui::Checkbox("Enable Ollama Integration", &ollamaEnabled_))
-    m_dirty = true;
-  if (ollamaEnabled_) {
-    if (ImGui::InputText("Ollama Endpoint", ollamaEndpoint_, sizeof(ollamaEndpoint_)))
-      m_dirty = true;
+    const char* pngProfiles[] = {"Screen Share", "Print Preview", "High Resolution"};
+    if (ImGui::BeginMenu("PNG Profile")) {
+      for (int i = 0; i < IM_ARRAYSIZE(pngProfiles); ++i) {
+        if (ImGui::MenuItem(pngProfiles[i], nullptr, defaultExportPngProfile_ == i)) {
+          defaultExportPngProfile_ = i;
+          m_ctx.setSetting("default_export_png_profile", std::to_string(defaultExportPngProfile_));
+        }
+      }
+      ImGui::EndMenu();
+    }
 
-    // Model selector
-    ImGui::SameLine();
+    const char* layoutTemplates[] = {"Chart Only", "Reference Sheet"};
+    if (ImGui::BeginMenu("Layout")) {
+      for (int i = 0; i < IM_ARRAYSIZE(layoutTemplates); ++i) {
+        if (ImGui::MenuItem(layoutTemplates[i], nullptr, defaultExportLayout_ == i)) {
+          defaultExportLayout_ = i;
+          m_ctx.setSetting("default_export_layout", std::to_string(defaultExportLayout_));
+        }
+      }
+      ImGui::EndMenu();
+    }
+    ImGui::EndMenu();
+  }
+
+  if (ImGui::BeginMenu("Interpretation")) {
+    if (ImGui::Checkbox("Enable Ollama Integration", &ollamaEnabled_)) {
+      m_ctx.setSetting("ollama_enabled", ollamaEnabled_ ? "1" : "0");
+    }
+    ImGui::SetNextItemWidth(260.0f);
+    if (ImGui::InputText("Endpoint", ollamaEndpoint_, sizeof(ollamaEndpoint_))) {
+      m_ctx.setSetting("ollama_endpoint", ollamaEndpoint_);
+    }
+
     if (ImGui::Button("Refresh Models")) {
       refreshOllamaModels();
     }
-    if (!ollamaModels_.empty()) {
-      // Build null-separated string for ImGui::Combo.
-      std::string comboStr;
-      for (const auto& m : ollamaModels_) { comboStr += m; comboStr += '\0'; }
-      comboStr += '\0';
-      if (ImGui::Combo("Ollama Model", &ollamaModelIndex_, comboStr.c_str()))
-        m_dirty = true;
+
+    if (!ollamaModels_.empty() && ImGui::BeginMenu("Ollama Model")) {
+      for (int i = 0; i < static_cast<int>(ollamaModels_.size()); ++i) {
+        if (ImGui::MenuItem(ollamaModels_[i].c_str(), nullptr, ollamaModelIndex_ == i)) {
+          ollamaModelIndex_ = i;
+          m_ctx.setSetting("ollama_model", ollamaModels_[i]);
+        }
+      }
+      ImGui::EndMenu();
     }
+
     if (!ollamaModelStatus_.empty()) {
-      bool isErr = ollamaModelStatus_.find("Error") != std::string::npos ||
-                   ollamaModelStatus_.find("failed") != std::string::npos;
-      ImVec4 col = isErr ? ImVec4(0.9f, 0.3f, 0.3f, 1.0f)
-                         : ImVec4(0.4f, 0.7f, 0.4f, 1.0f);
-      ImGui::TextColored(col, "%s", ollamaModelStatus_.c_str());
-    } else {
-      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-          "Requires a running Ollama instance.");
+      const bool isErr = ollamaModelStatus_.find("Error") != std::string::npos ||
+                         ollamaModelStatus_.find("failed") != std::string::npos;
+      ImGui::TextColored(isErr ? ImVec4(0.9f, 0.3f, 0.3f, 1.0f)
+                               : ImVec4(0.4f, 0.7f, 0.4f, 1.0f),
+                         "%s",
+                         ollamaModelStatus_.c_str());
     }
+    ImGui::EndMenu();
   }
-
-  ImGui::Separator();
-  bool wasDirty = m_dirty;
-  if (!wasDirty) ImGui::BeginDisabled();
-  if (ImGui::Button("Save Settings")) {
-    saveSettings();
-  }
-  if (!wasDirty) ImGui::EndDisabled();
-  if (!m_dirty) {
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.4f, 0.7f, 0.4f, 1.0f), "Saved");
-  }
-
-  ImGui::End();
 }
 
 void SettingsPanel::refreshOllamaModels() {

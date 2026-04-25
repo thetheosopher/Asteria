@@ -31,6 +31,7 @@ class AiInterpretationPanel {
  private:
   void startGeneration();
   void stopGeneration();
+  void saveInterpretation();
   std::string buildPrompt() const;
   std::string chartFactsBlock() const;
 
@@ -54,6 +55,8 @@ class AiInterpretationPanel {
   // Snapshot read by draw() each frame (no lock needed — only UI thread reads/writes).
   std::string m_displayText;
   std::string m_displayError;
+  std::string m_statusText;
+  bool m_statusIsError = false;
 };
 
 }  // namespace asteria::ui

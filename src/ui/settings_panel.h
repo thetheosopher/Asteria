@@ -11,14 +11,16 @@ struct AppContext;
 /// Persisted to the app_settings key-value table via AppContext.
 class SettingsPanel {
  public:
-  bool open = true;
+  bool open = false;
 
   explicit SettingsPanel(AppContext& ctx);
   void draw();
+  void ensureLoaded();
+  void drawViewMenuContents();
+  bool isOllamaEnabled() const { return ollamaEnabled_; }
 
  private:
   void loadSettings();
-  void saveSettings();
   void refreshOllamaModels();
 
   AppContext& m_ctx;
@@ -27,6 +29,8 @@ class SettingsPanel {
   int  defaultHouseSystem_ = 0;
   int  unknownTimePolicy_  = 0;
   int  defaultExportFormat_ = 0;
+  int  defaultExportPngProfile_ = 0;
+  int  defaultExportLayout_ = 0;
   bool ollamaEnabled_      = false;
   char ollamaEndpoint_[256] = "http://localhost:11434";
   std::vector<std::string> ollamaModels_;

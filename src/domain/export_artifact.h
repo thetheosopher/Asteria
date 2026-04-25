@@ -15,6 +15,7 @@ struct ExportArtifact {
   std::optional<int> heightPx;
   std::optional<int> dpi;
   std::string themeSnapshotJson;
+  std::string exportMetadataJson;
   std::string exportedAt;
 };
 

@@ -18,4 +18,6 @@ add_custom_command(TARGET asteria_app POST_BUILD
     "${CMAKE_SOURCE_DIR}/assets/atlasbig.as" "$<TARGET_FILE_DIR:asteria_app>/atlasbig.as"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${CMAKE_SOURCE_DIR}/third_party/astrolog/timezone.as" "$<TARGET_FILE_DIR:asteria_app>/timezone.as"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_SOURCE_DIR}/assets/fonts/Astro.ttf" "$<TARGET_FILE_DIR:asteria_app>/Astro.ttf"
 )

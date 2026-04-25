@@ -61,6 +61,9 @@ class LibraryPanel {
   std::vector<const util::AtlasEntry*> atlasResults_;
   bool atlasPopupOpen_ = false;
   int  atlasSelectedIdx_ = -1;
+
+  float editorPaneHeight_ = -1.0f;
+  bool editorPaneCustomized_ = false;
 };
 
 }  // namespace asteria::ui

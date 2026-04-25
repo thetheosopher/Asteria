@@ -44,21 +44,38 @@ TEST_F(ExportServiceTest, ExportSvgCreatesFile) {
 TEST_F(ExportServiceTest, ExportSvgRecordsTheme) {
   asteria::core::ExportService service;
   auto path = (tempDir / "themed.svg").string();
-  auto result = service.exportSvg(scene, 42, path, theme);
+  asteria::core::ExportMetadata metadata;
+  metadata.chartType = "natal";
+  metadata.exportProfile = "vector";
+  metadata.layoutTemplate = "reference_sheet";
+  metadata.dateTag = "2026-04-25";
+  metadata.hasWarnings = true;
+  auto result = service.exportSvg(scene, 42, path, theme, metadata);
   ASSERT_TRUE(result.ok());
   EXPECT_NE(result.value().themeSnapshotJson.find("Textbook Light"), std::string::npos);
+  EXPECT_NE(result.value().exportMetadataJson.find("chart_type"), std::string::npos);
+  EXPECT_NE(result.value().exportMetadataJson.find("reference_sheet"), std::string::npos);
+  EXPECT_NE(result.value().exportMetadataJson.find("2026-04-25"), std::string::npos);
+  EXPECT_FALSE(result.value().exportedAt.empty());
 }
 
-TEST_F(ExportServiceTest, ExportPngCreatesStubFile) {
+TEST_F(ExportServiceTest, ExportPngCreatesFile) {
   asteria::core::ExportService service;
   auto path = (tempDir / "test_export.png").string();
-  auto result = service.exportPng(scene, chart.computedChartId, path, 800, 800, 150, theme);
+  asteria::core::ExportMetadata metadata;
+  metadata.chartType = "natal";
+  metadata.exportProfile = "screen_share";
+  metadata.layoutTemplate = "chart_only";
+  metadata.dateTag = "2026-04-25";
+  auto result = service.exportPng(scene, chart.computedChartId, path, 800, 800, 150, theme, metadata);
   ASSERT_TRUE(result.ok());
   EXPECT_TRUE(std::filesystem::exists(path));
+  EXPECT_GT(std::filesystem::file_size(path), 64u);
   EXPECT_EQ(result.value().exportType, asteria::domain::ExportType::Png);
   EXPECT_EQ(result.value().widthPx, 800);
   EXPECT_EQ(result.value().heightPx, 800);
   EXPECT_EQ(result.value().dpi, 150);
+  EXPECT_NE(result.value().exportMetadataJson.find("screen_share"), std::string::npos);
 }
 
 TEST_F(ExportServiceTest, ExportSvgFailsOnBadPath) {

@@ -20,5 +20,6 @@ ThemePreset textbookLight();
 ThemePreset textbookMonochrome();
 ThemePreset luxuryLight();
 ThemePreset luxuryDark();
+ThemePreset themePresetByIndex(int index);
 
 }  // namespace asteria::render
