@@ -153,7 +153,7 @@ std::string InterpretationService::describePlanet(const domain::PlanetPosition& 
   int deg = static_cast<int>(planet.longitudeDegrees) % 30;
   int min = static_cast<int>((planet.longitudeDegrees - static_cast<int>(planet.longitudeDegrees)) * 60) % 60;
   if (min < 0) min = -min;
-  ss << " at " << deg << "\u00b0" << min << "'";
+  ss << " at " << deg << "\xC2\xB0" << min << "'";
   if (planet.retrograde) {
     ss << " (Rx)";
   }
@@ -163,7 +163,7 @@ std::string InterpretationService::describePlanet(const domain::PlanetPosition& 
 std::string InterpretationService::describeAspect(const domain::Aspect& aspect) const {
   std::ostringstream ss;
   ss << aspect.objectA << " " << aspect.aspectType << " " << aspect.objectB;
-  ss << " (orb: " << aspect.orbDegrees << "\u00b0";
+  ss << " (orb: " << aspect.orbDegrees << "\xC2\xB0";
   if (aspect.applyingOrSeparating) {
     ss << ", " << *aspect.applyingOrSeparating;
   }

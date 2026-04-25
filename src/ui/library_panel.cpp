@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include <algorithm>
 #include <cstring>
+#include <cstdio>
 
 namespace asteria::ui {
 
@@ -199,6 +200,49 @@ void LibraryPanel::draw() {
     ImGui::Text("Birth Event:");
     if (ImGui::InputText("Date (YYYY-MM-DD)", dateBuf_, sizeof(dateBuf_))) m_dirty = true;
     if (ImGui::InputText("Time (HH:MM)", timeBuf_, sizeof(timeBuf_))) m_dirty = true;
+
+    // --- Atlas-powered city lookup ---
+    if (m_ctx.atlasService.isLoaded()) {
+      ImGui::Text("Location Lookup:");
+      bool searchChanged = ImGui::InputText("##AtlasSearch", atlasSearchBuf_,
+                                             sizeof(atlasSearchBuf_));
+      ImGui::SameLine();
+      ImGui::TextDisabled("(type city name)");
+
+      if (searchChanged) {
+        updateAtlasResults();
+      }
+
+      // Show results list if we have matches
+      if (!atlasResults_.empty()) {
+        float listHeight = std::min(static_cast<float>(atlasResults_.size()) * 20.0f, 200.0f);
+        if (ImGui::BeginChild("##AtlasResults", ImVec2(-1, listHeight),
+                               ImGuiChildFlags_Borders)) {
+          for (int i = 0; i < static_cast<int>(atlasResults_.size()); ++i) {
+            auto* entry = atlasResults_[i];
+            // Format: "City Name (CC) — lat, lon  [timezone]"
+            char label[512];
+            std::snprintf(label, sizeof(label), "%s (%s)  %.4f%s, %.4f%s  [%s]",
+                          entry->name.c_str(),
+                          entry->regionCode.c_str(),
+                          std::abs(entry->latitude),
+                          entry->latitude >= 0 ? "N" : "S",
+                          std::abs(entry->longitude),
+                          entry->longitude >= 0 ? "E" : "W",
+                          entry->timezoneName.c_str());
+            if (ImGui::Selectable(label, atlasSelectedIdx_ == i)) {
+              applyAtlasEntry(*entry);
+              atlasResults_.clear();
+              atlasSearchBuf_[0] = '\0';
+              break;
+            }
+          }
+        }
+        ImGui::EndChild();
+      }
+    }
+
+    // City display (manual or from atlas)
     if (ImGui::InputText("City", cityBuf_, sizeof(cityBuf_))) m_dirty = true;
 
     if (ImGui::InputDouble("Latitude (\xC2\xB0, +N)", &latDeg_, 0.0, 0.0, "%.4f"))
@@ -228,6 +272,45 @@ void LibraryPanel::draw() {
   }
 
   ImGui::End();
+}
+
+void LibraryPanel::updateAtlasResults() {
+  std::string query(atlasSearchBuf_);
+  if (query.size() < 2) {
+    atlasResults_.clear();
+    return;
+  }
+  atlasResults_ = m_ctx.atlasService.search(query, 20);
+  atlasSelectedIdx_ = -1;
+}
+
+void LibraryPanel::applyAtlasEntry(const util::AtlasEntry& entry) {
+  // Populate city, lat, lon
+  std::strncpy(cityBuf_, entry.name.c_str(), sizeof(cityBuf_) - 1);
+  cityBuf_[sizeof(cityBuf_) - 1] = '\0';
+  latDeg_ = entry.latitude;
+  lonDeg_ = entry.longitude;
+
+  // Resolve timezone using the birth date (if available)
+  int year = 2000, month = 1, day = 1;
+  double timeHrs = 12.0;
+  if (std::strlen(dateBuf_) >= 10) {
+    std::sscanf(dateBuf_, "%4d-%2d-%2d", &year, &month, &day);
+  }
+  if (std::strlen(timeBuf_) >= 5) {
+    int hh = 12, mm = 0;
+    std::sscanf(timeBuf_, "%d:%d", &hh, &mm);
+    timeHrs = hh + mm / 60.0;
+  }
+
+  auto tz = m_ctx.atlasService.resolveTimezone(entry.timezoneName,
+                                                year, month, day, timeHrs);
+  tzOffsetHrs_ = tz.utcOffsetHours;
+  dstHrs_      = tz.dstOffsetHours;
+
+  // Store timezone name on the birth event
+  m_currentBirthEvent.timezoneName = entry.timezoneName;
+  m_dirty = true;
 }
 
 }  // namespace asteria::ui

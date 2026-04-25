@@ -1,7 +1,9 @@
 #include "settings_panel.h"
 #include "app_context.h"
+#include "util/ollama_client.h"
 #include "imgui.h"
 #include <cstring>
+#include <algorithm>
 
 namespace asteria::ui {
 
@@ -15,6 +17,13 @@ void SettingsPanel::loadSettings() {
   ollamaEnabled_      = m_ctx.getSetting("ollama_enabled", "0") == "1";
   auto endpoint       = m_ctx.getSetting("ollama_endpoint", "http://localhost:11434");
   std::strncpy(ollamaEndpoint_, endpoint.c_str(), sizeof(ollamaEndpoint_) - 1);
+  auto savedModel     = m_ctx.getSetting("ollama_model", "");
+  if (ollamaEnabled_ && !savedModel.empty()) {
+    refreshOllamaModels();
+    auto it = std::find(ollamaModels_.begin(), ollamaModels_.end(), savedModel);
+    if (it != ollamaModels_.end())
+      ollamaModelIndex_ = static_cast<int>(it - ollamaModels_.begin());
+  }
   m_loaded = true;
   m_dirty = false;
 }
@@ -26,6 +35,8 @@ void SettingsPanel::saveSettings() {
   m_ctx.setSetting("default_export_format", std::to_string(defaultExportFormat_));
   m_ctx.setSetting("ollama_enabled", ollamaEnabled_ ? "1" : "0");
   m_ctx.setSetting("ollama_endpoint", ollamaEndpoint_);
+  if (ollamaModelIndex_ >= 0 && ollamaModelIndex_ < static_cast<int>(ollamaModels_.size()))
+    m_ctx.setSetting("ollama_model", ollamaModels_[ollamaModelIndex_]);
   m_dirty = false;
 }
 
@@ -74,8 +85,30 @@ void SettingsPanel::draw() {
   if (ollamaEnabled_) {
     if (ImGui::InputText("Ollama Endpoint", ollamaEndpoint_, sizeof(ollamaEndpoint_)))
       m_dirty = true;
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-        "Requires a running Ollama instance.");
+
+    // Model selector
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh Models")) {
+      refreshOllamaModels();
+    }
+    if (!ollamaModels_.empty()) {
+      // Build null-separated string for ImGui::Combo.
+      std::string comboStr;
+      for (const auto& m : ollamaModels_) { comboStr += m; comboStr += '\0'; }
+      comboStr += '\0';
+      if (ImGui::Combo("Ollama Model", &ollamaModelIndex_, comboStr.c_str()))
+        m_dirty = true;
+    }
+    if (!ollamaModelStatus_.empty()) {
+      bool isErr = ollamaModelStatus_.find("Error") != std::string::npos ||
+                   ollamaModelStatus_.find("failed") != std::string::npos;
+      ImVec4 col = isErr ? ImVec4(0.9f, 0.3f, 0.3f, 1.0f)
+                         : ImVec4(0.4f, 0.7f, 0.4f, 1.0f);
+      ImGui::TextColored(col, "%s", ollamaModelStatus_.c_str());
+    } else {
+      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+          "Requires a running Ollama instance.");
+    }
   }
 
   ImGui::Separator();
@@ -91,6 +124,26 @@ void SettingsPanel::draw() {
   }
 
   ImGui::End();
+}
+
+void SettingsPanel::refreshOllamaModels() {
+  util::OllamaClient client(ollamaEndpoint_);
+  ollamaModels_ = client.listModels();
+  if (ollamaModels_.empty()) {
+    ollamaModelStatus_ = client.lastError().empty()
+        ? "No models found on server."
+        : "Error: " + client.lastError();
+    ollamaModelIndex_ = -1;
+  } else {
+    ollamaModelStatus_ = std::to_string(ollamaModels_.size()) + " model(s) found.";
+    // Try to preserve current selection.
+    auto saved = m_ctx.getSetting("ollama_model", "");
+    auto it = std::find(ollamaModels_.begin(), ollamaModels_.end(), saved);
+    if (it != ollamaModels_.end())
+      ollamaModelIndex_ = static_cast<int>(it - ollamaModels_.begin());
+    else
+      ollamaModelIndex_ = 0;
+  }
 }
 
 }  // namespace asteria::ui

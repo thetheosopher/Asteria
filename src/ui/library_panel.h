@@ -5,6 +5,7 @@
 #include <cstdint>
 #include "domain/person.h"
 #include "domain/birth_event.h"
+#include "util/atlas_service.h"
 
 namespace asteria::ui {
 
@@ -27,6 +28,8 @@ class LibraryPanel {
   void loadBirthEvent();
   void savePerson();
   void saveBirthEvent();
+  void updateAtlasResults();
+  void applyAtlasEntry(const util::AtlasEntry& entry);
 
   AppContext& m_ctx;
 
@@ -52,6 +55,12 @@ class LibraryPanel {
   double lonDeg_      = 0.0;
   double tzOffsetHrs_ = 0.0;
   double dstHrs_      = 0.0;
+
+  // Atlas lookup state
+  char atlasSearchBuf_[256] = {};
+  std::vector<const util::AtlasEntry*> atlasResults_;
+  bool atlasPopupOpen_ = false;
+  int  atlasSelectedIdx_ = -1;
 };
 
 }  // namespace asteria::ui

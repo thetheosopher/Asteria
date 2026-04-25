@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace asteria::ui {
 
@@ -18,6 +19,7 @@ class SettingsPanel {
  private:
   void loadSettings();
   void saveSettings();
+  void refreshOllamaModels();
 
   AppContext& m_ctx;
 
@@ -27,6 +29,9 @@ class SettingsPanel {
   int  defaultExportFormat_ = 0;
   bool ollamaEnabled_      = false;
   char ollamaEndpoint_[256] = "http://localhost:11434";
+  std::vector<std::string> ollamaModels_;
+  int  ollamaModelIndex_   = -1;
+  std::string ollamaModelStatus_;  // status message from last refresh
   bool m_dirty = false;
   bool m_loaded = false;
 };

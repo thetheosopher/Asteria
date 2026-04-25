@@ -6,6 +6,7 @@ namespace asteria::render {
 
 struct ThemePreset {
   std::string name;
+  Color background;
   Color primary;
   Color secondary;
   Color accent;

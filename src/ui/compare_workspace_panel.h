@@ -11,6 +11,7 @@
 namespace asteria::ui {
 
 struct AppContext;
+class AiInterpretationPanel;
 
 /// Compare Workspace panel — synastry/composite with two-person selection.
 /// Wired to ComparisonChartService, PersonRepository, BirthEventRepository.
@@ -20,6 +21,8 @@ class CompareWorkspacePanel {
 
   explicit CompareWorkspacePanel(AppContext& ctx);
   void draw();
+
+  void setAiPanel(AiInterpretationPanel* panel) { m_aiPanel = panel; }
 
  private:
   void refreshPeople();
@@ -40,6 +43,7 @@ class CompareWorkspacePanel {
   std::optional<domain::ComputedChart> m_chartB;
   std::optional<domain::ComputedChart> m_compChart;
   bool m_hasResult = false;
+  AiInterpretationPanel* m_aiPanel = nullptr;
 };
 
 }  // namespace asteria::ui

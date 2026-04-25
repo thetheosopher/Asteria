@@ -57,6 +57,20 @@ FetchContent_MakeAvailable(sqlite3)
 add_library(sqlite3_lib STATIC ${sqlite3_SOURCE_DIR}/sqlite3.c)
 target_include_directories(sqlite3_lib PUBLIC ${sqlite3_SOURCE_DIR})
 
+# cpp-httplib — header-only HTTP client for Ollama API (no SSL needed; Ollama is local)
+set(HTTPLIB_REQUIRE_OPENSSL OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_REQUIRE_ZLIB OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_USE_OPENSSL_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_USE_ZLIB_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  httplib
+  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+  GIT_TAG v0.18.3
+  GIT_SHALLOW TRUE
+  TLS_VERIFY OFF
+)
+FetchContent_MakeAvailable(httplib)
+
 # Astrolog computation library (vendored third-party)
 add_subdirectory(third_party/astrolog)
 

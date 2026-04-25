@@ -1,4 +1,5 @@
 #include "compare_workspace_panel.h"
+#include "ai_interpretation_panel.h"
 #include "app_context.h"
 #include "../render/astro_glyphs.h"
 #include "core/birth_event_resolver.h"
@@ -85,6 +86,7 @@ void CompareWorkspacePanel::computeComparison() {
                      m_people[personB_].fullName + " (" +
                      std::to_string(m_chartA->interAspects.size()) +
                      " inter-aspects)";
+    if (m_aiPanel) m_aiPanel->setChart(*m_chartA, domain::ChartType::Synastry);
   } else {
     // Composite — engine returns midpoint chart
     req.chartType = domain::ChartType::Composite;
@@ -100,6 +102,7 @@ void CompareWorkspacePanel::computeComparison() {
     m_hasResult = true;
     statusMessage_ = "Composite: " + m_people[personA_].fullName + " / " +
                      m_people[personB_].fullName;
+    if (m_aiPanel) m_aiPanel->setChart(*m_compChart, domain::ChartType::Composite);
   }
 }
 

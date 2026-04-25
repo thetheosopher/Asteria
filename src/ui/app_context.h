@@ -10,6 +10,7 @@
 #include "core/comparison_chart_service.h"
 #include "core/interpretation_service.h"
 #include "core/export_service.h"
+#include "util/atlas_service.h"
 
 namespace asteria::ui {
 
@@ -26,6 +27,7 @@ struct AppContext {
   core::ComparisonChartService comparisonService;
   core::InterpretationService interpretationService;
   core::ExportService exportService;
+  util::AtlasService atlasService;
 
   AppContext(data::SQLiteDatabase& db, engine::IChartEngine& engine)
       : database(db),

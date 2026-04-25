@@ -14,6 +14,8 @@
 #include "chart_workspace_panel.h"
 #include "compare_workspace_panel.h"
 #include "settings_panel.h"
+#include "ai_interpretation_panel.h"
+#include "util/atlas_service.h"
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
@@ -116,9 +118,11 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 namespace asteria::ui {
 
-int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine) {
+int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
+                   util::AtlasService& atlas) {
   // Create shared application context
   AppContext ctx(database, engine);
+  ctx.atlasService = std::move(atlas);
 
   // Register window class
   WNDCLASSEXW wc{};
@@ -220,6 +224,9 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine)
   ChartWorkspacePanel chartPanel(ctx);
   CompareWorkspacePanel comparePanel(ctx);
   SettingsPanel settingsPanel(ctx);
+  AiInterpretationPanel aiPanel(ctx);
+  chartPanel.setAiPanel(&aiPanel);
+  comparePanel.setAiPanel(&aiPanel);
 
   const ImVec4 clearColor(0.10f, 0.10f, 0.12f, 1.00f);
 
@@ -266,6 +273,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine)
           ImGui::MenuItem("Library",   nullptr, &libraryPanel.open);
           ImGui::MenuItem("Chart",     nullptr, &chartPanel.open);
           ImGui::MenuItem("Compare",   nullptr, &comparePanel.open);
+          ImGui::MenuItem("AI Interpretation", nullptr, &aiPanel.open);
           ImGui::MenuItem("Settings",  nullptr, &settingsPanel.open);
           ImGui::EndMenu();
         }
@@ -283,6 +291,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine)
     chartPanel.draw();
     comparePanel.draw();
     settingsPanel.draw();
+    aiPanel.draw();
 
     // Render
     ImGui::Render();

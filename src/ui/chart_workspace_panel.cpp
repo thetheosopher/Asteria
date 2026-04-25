@@ -1,4 +1,5 @@
 #include "chart_workspace_panel.h"
+#include "ai_interpretation_panel.h"
 #include "app_context.h"
 #include "core/birth_event_resolver.h"
 #include "render/natal_chart_layout.h"
@@ -10,6 +11,7 @@
 #include <algorithm>
 #include <vector>
 #include <ctime>
+#include <iomanip>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -115,6 +117,54 @@ void drawAspectLines(ImDrawList* drawList, float cx, float cy, float r,
   }
 }
 
+std::string formatCoord(double value, bool latitude) {
+  std::ostringstream out;
+  out << std::fixed << std::setprecision(4) << std::abs(value)
+      << (latitude ? (value >= 0.0 ? " N" : " S")
+                   : (value >= 0.0 ? " E" : " W"));
+  return out.str();
+}
+
+std::string formatUtcOffset(double hours) {
+  const double absHours = std::abs(hours);
+  const int wholeHours = static_cast<int>(absHours);
+  const int minutes = static_cast<int>((absHours - wholeHours) * 60.0 + 0.5);
+
+  char buf[32];
+  std::snprintf(buf, sizeof(buf), "UTC%c%02d:%02d", hours >= 0.0 ? '-' : '+', wholeHours, minutes);
+  return buf;
+}
+
+const char* timeAccuracyLabel(domain::TimeAccuracy accuracy) {
+  switch (accuracy) {
+    case domain::TimeAccuracy::Exact: return "Exact";
+    case domain::TimeAccuracy::Approximate: return "Approximate";
+    case domain::TimeAccuracy::Unknown: return "Unknown";
+  }
+  return "Unknown";
+}
+
+void drawSectionHeader(const char* title, ImU32 accentCol, ImU32 textCol) {
+  ImGui::Spacing();
+  ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(accentCol), "%s", title);
+  ImGui::Separator();
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(textCol));
+}
+
+void endSectionHeader() {
+  ImGui::PopStyleColor();
+}
+
+void drawInfoRow(const char* label, const std::string& value, ImU32 labelCol, ImU32 valueCol) {
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(labelCol));
+  ImGui::TextUnformatted(label);
+  ImGui::PopStyleColor();
+  ImGui::SameLine(130.0f);
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(valueCol));
+  ImGui::TextWrapped("%s", value.c_str());
+  ImGui::PopStyleColor();
+}
+
 }  // anonymous namespace
 
 ChartWorkspacePanel::ChartWorkspacePanel(AppContext& ctx) : m_ctx(ctx) {}
@@ -122,6 +172,9 @@ ChartWorkspacePanel::ChartWorkspacePanel(AppContext& ctx) : m_ctx(ctx) {}
 void ChartWorkspacePanel::setSelectedPerson(std::int64_t personId) {
   if (m_personId == personId) return;
   m_personId = personId;
+  m_person.reset();
+  m_birthEvent.reset();
+  m_location.reset();
   m_chart.reset();
   m_hasScene = false;
   interpretationText_.clear();
@@ -150,13 +203,16 @@ void ChartWorkspacePanel::computeChart() {
     return;
   }
 
+  m_person = m_ctx.personRepo.findById(m_personId);
   const auto& be = events.front();
+  m_birthEvent = be;
 
   // Look up an associated Location row (if any)
   std::optional<domain::LocationResolution> loc;
   if (be.locationId) {
     loc = m_ctx.locationRepo.findById(*be.locationId);
   }
+  m_location = loc;
 
   domain::ChartRequest req;
   req.primaryBirthEventId = be.birthEventId;
@@ -228,6 +284,11 @@ void ChartWorkspacePanel::computeChart() {
   statusMessage_ = "Chart computed (" + std::to_string(m_chart->planets.size()) +
                    " planets, " + std::to_string(m_chart->aspects.size()) + " aspects)";
 
+  // Push chart to AI panel if connected.
+  if (m_aiPanel) {
+    m_aiPanel->setChart(*m_chart, req.chartType);
+  }
+
   // Generate interpretation
   auto interpResult = m_ctx.interpretationService.generateBuiltIn(
       *m_chart, req.chartType);
@@ -241,21 +302,19 @@ void ChartWorkspacePanel::computeChart() {
 void ChartWorkspacePanel::drawChartCanvas() {
   ImVec2 canvasPos = ImGui::GetCursorScreenPos();
   ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-  float panelWidth = showInterpretation_ ? 260.0f : 0.0f;
-  canvasSize.x -= panelWidth;
   if (canvasSize.x < 100) canvasSize.x = 100;
   if (canvasSize.y < 100) canvasSize.y = 100;
 
+  auto theme = currentThemePreset();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   drawList->AddRectFilled(canvasPos,
       ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y),
-      IM_COL32(20, 20, 24, 255));
+      IM_COL32(theme.background.r, theme.background.g, theme.background.b, 255));
 
   float cx = canvasPos.x + canvasSize.x * 0.5f;
   float cy = canvasPos.y + canvasSize.y * 0.5f;
   float maxR = (canvasSize.x < canvasSize.y ? canvasSize.x : canvasSize.y) * 0.45f;
 
-  auto theme = currentThemePreset();
   ImU32 primaryCol = IM_COL32(theme.primary.r, theme.primary.g, theme.primary.b, 255);
   ImU32 secondaryCol = IM_COL32(theme.secondary.r, theme.secondary.g, theme.secondary.b, 200);
   ImU32 accentCol = IM_COL32(theme.accent.r, theme.accent.g, theme.accent.b, 255);
@@ -412,6 +471,150 @@ void ChartWorkspacePanel::drawChartCanvas() {
   ImGui::Dummy(canvasSize);
 }
 
+void ChartWorkspacePanel::drawInfoSidePanel() {
+  auto theme = currentThemePreset();
+  const ImU32 accentCol = IM_COL32(theme.accent.r, theme.accent.g, theme.accent.b, 255);
+  const ImU32 headingCol = IM_COL32(theme.primary.r, theme.primary.g, theme.primary.b, 255);
+  const ImU32 textCol = IM_COL32(theme.text.r, theme.text.g, theme.text.b, 255);
+  const ImU32 mutedCol = IM_COL32(theme.secondary.r, theme.secondary.g, theme.secondary.b, 255);
+  const ImVec4 panelBg(
+      std::min(theme.background.r + 6, 255) / 255.0f,
+      std::min(theme.background.g + 6, 255) / 255.0f,
+      std::min(theme.background.b + 8, 255) / 255.0f,
+      1.0f);
+
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, panelBg);
+  ImGui::BeginChild("NatalInfoSide", ImVec2(0, 0), ImGuiChildFlags_Borders);
+  ImGui::PopStyleColor();
+
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(headingCol));
+  ImGui::TextUnformatted("Natal Chart Notes");
+  ImGui::PopStyleColor();
+  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(mutedCol));
+  ImGui::TextWrapped("Person, birthplace, chart settings, and object positions in a compact reference panel.");
+  ImGui::PopStyleColor();
+
+  drawSectionHeader("Person", accentCol, textCol);
+  drawInfoRow("Name", m_person ? m_person->displayName : std::string("No person selected"), mutedCol, textCol);
+  if (m_birthEvent) {
+    drawInfoRow("Birth Date", m_birthEvent->birthDate.empty() ? std::string("Unknown") : m_birthEvent->birthDate, mutedCol, textCol);
+    drawInfoRow("Birth Time",
+                m_birthEvent->birthTime ? *m_birthEvent->birthTime : std::string("Unknown / noon default"),
+                mutedCol, textCol);
+    drawInfoRow("Accuracy", timeAccuracyLabel(m_birthEvent->timeAccuracy), mutedCol, textCol);
+  }
+  endSectionHeader();
+
+  drawSectionHeader("Location", accentCol, textCol);
+  if (m_birthEvent || m_location) {
+    const std::string locationName = m_location ? m_location->displayName :
+        (m_birthEvent && !m_birthEvent->cityInput.empty() ? m_birthEvent->cityInput : std::string("Unknown"));
+    drawInfoRow("Place", locationName, mutedCol, textCol);
+
+    const double latitude = m_location ? m_location->latitude : (m_birthEvent && m_birthEvent->latitudeDeg ? *m_birthEvent->latitudeDeg : 0.0);
+    const double longitude = m_location ? m_location->longitude : (m_birthEvent && m_birthEvent->longitudeDeg ? *m_birthEvent->longitudeDeg : 0.0);
+    drawInfoRow("Latitude", formatCoord(latitude, true), mutedCol, textCol);
+    drawInfoRow("Longitude", formatCoord(longitude, false), mutedCol, textCol);
+
+    std::string zoneName = m_location ? m_location->timezoneName :
+        (m_birthEvent && m_birthEvent->timezoneName ? *m_birthEvent->timezoneName : std::string());
+    if (zoneName.empty()) zoneName = "Manual / unresolved";
+    drawInfoRow("Time Zone", zoneName, mutedCol, textCol);
+
+    if (m_birthEvent && m_birthEvent->timezoneOffsetHours) {
+      drawInfoRow("Offset", formatUtcOffset(*m_birthEvent->timezoneOffsetHours), mutedCol, textCol);
+    }
+    if (m_birthEvent && m_birthEvent->dstOffsetHours) {
+      std::ostringstream dst;
+      dst << *m_birthEvent->dstOffsetHours << "h";
+      drawInfoRow("DST", dst.str(), mutedCol, textCol);
+    }
+  } else {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(mutedCol));
+    ImGui::TextWrapped("Compute a natal chart to populate location details.");
+    ImGui::PopStyleColor();
+  }
+  endSectionHeader();
+
+  drawSectionHeader("Chart", accentCol, textCol);
+  if (m_chart) {
+    drawInfoRow("House System", m_chart->houseSystem, mutedCol, textCol);
+    drawInfoRow("Zodiac", m_chart->zodiacMode, mutedCol, textCol);
+    drawInfoRow("Engine", m_chart->engineMethod.empty() ? std::string("Astrolog") : m_chart->engineMethod, mutedCol, textCol);
+    drawInfoRow("Planets", std::to_string(m_chart->planets.size()), mutedCol, textCol);
+    drawInfoRow("Aspects", std::to_string(m_chart->aspects.size()), mutedCol, textCol);
+    if (!m_chart->uncertaintyFlags.empty()) {
+      drawInfoRow("Warnings", m_chart->uncertaintyFlags.front(), mutedCol, textCol);
+    }
+  }
+  endSectionHeader();
+
+  drawSectionHeader("Object Positions", accentCol, textCol);
+  if (m_chart && ImGui::BeginTable("PlanetPositions", 4,
+        ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
+        ImVec2(-1, 220))) {
+    ImGui::TableSetupColumn("Body", ImGuiTableColumnFlags_WidthFixed, 86.0f);
+    ImGui::TableSetupColumn("Position", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+    ImGui::TableSetupColumn("House", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+    ImGui::TableSetupColumn("Speed", ImGuiTableColumnFlags_WidthFixed, 72.0f);
+    ImGui::TableHeadersRow();
+
+    for (const auto& planet : m_chart->planets) {
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex(0);
+      std::string body = std::string(render::glyphs::planet(planet.objectId) ? render::glyphs::planet(planet.objectId) : "") + " " + planet.objectId;
+      ImGui::TextUnformatted(body.c_str());
+
+      ImGui::TableSetColumnIndex(1);
+      ImGui::TextUnformatted(render::glyphs::formatPosition(planet.longitudeDegrees, planet.sign).c_str());
+
+      ImGui::TableSetColumnIndex(2);
+      if (planet.house) ImGui::Text("%d", *planet.house);
+      else ImGui::TextDisabled("-");
+
+      ImGui::TableSetColumnIndex(3);
+      std::ostringstream speed;
+      speed << std::fixed << std::setprecision(2) << planet.speed;
+      if (planet.retrograde) speed << " R";
+      ImGui::TextUnformatted(speed.str().c_str());
+    }
+    ImGui::EndTable();
+  }
+  endSectionHeader();
+
+  if (m_chart && ImGui::CollapsingHeader("House Cusps", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::BeginTable("HouseCusps", 2,
+          ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp,
+          ImVec2(-1, 180))) {
+      ImGui::TableSetupColumn("House", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+      ImGui::TableSetupColumn("Position", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+      ImGui::TableHeadersRow();
+      for (const auto& cusp : m_chart->houseCusps) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("%d", cusp.houseNumber);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextUnformatted(render::glyphs::formatDegMin(cusp.longitudeDegrees).c_str());
+      }
+      ImGui::EndTable();
+    }
+  }
+
+  if (showInterpretation_) {
+    drawSectionHeader("Interpretation", accentCol, textCol);
+    if (interpretationText_.empty()) {
+      ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(mutedCol));
+      ImGui::TextWrapped("Compute the chart to see interpretation notes here.");
+      ImGui::PopStyleColor();
+    } else {
+      ImGui::TextWrapped("%s", interpretationText_.c_str());
+    }
+    endSectionHeader();
+  }
+
+  ImGui::EndChild();
+}
+
 void ChartWorkspacePanel::draw() {
   if (!open) return;
   ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
@@ -458,23 +661,19 @@ void ChartWorkspacePanel::draw() {
 
   ImGui::Separator();
 
-  // Chart canvas
-  drawChartCanvas();
+  const float infoWidth = 380.0f;
+  const float spacing = ImGui::GetStyle().ItemSpacing.x;
+  const float contentHeight = ImGui::GetContentRegionAvail().y;
+  const float chartWidth = std::max(260.0f, ImGui::GetContentRegionAvail().x - infoWidth - spacing);
 
-  // Interpretation side panel
-  if (showInterpretation_) {
-    ImGui::SameLine();
-    ImGui::BeginChild("InterpretationSide", ImVec2(250, 0), ImGuiChildFlags_Borders);
-    ImGui::Text("Interpretation");
-    ImGui::Separator();
-    if (interpretationText_.empty()) {
-      ImGui::TextWrapped("Select a person from the Library and click "
-                         "Compute to see interpretation here.");
-    } else {
-      ImGui::TextWrapped("%s", interpretationText_.c_str());
-    }
-    ImGui::EndChild();
-  }
+  ImGui::BeginChild("NatalChartCanvas", ImVec2(chartWidth, contentHeight), false);
+  drawChartCanvas();
+  ImGui::EndChild();
+
+  ImGui::SameLine();
+  ImGui::BeginChild("NatalInfoColumn", ImVec2(infoWidth, contentHeight), false);
+  drawInfoSidePanel();
+  ImGui::EndChild();
 
   ImGui::End();
 }

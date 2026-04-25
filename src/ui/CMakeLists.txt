@@ -5,6 +5,7 @@ add_library(asteria_ui STATIC
   chart_workspace_panel.cpp
   compare_workspace_panel.cpp
   settings_panel.cpp
+  ai_interpretation_panel.cpp
 )
 
 target_include_directories(asteria_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -14,4 +15,5 @@ target_link_libraries(asteria_ui PUBLIC
   asteria_core
   asteria_render
   asteria_data
+  asteria_util
 )

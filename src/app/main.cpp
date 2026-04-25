@@ -5,6 +5,7 @@
 #include "data/migration_runner.h"
 #include "engine/astrolog_embedded_engine.h"
 #include "ui/app_window.h"
+#include "util/atlas_service.h"
 
 int main() {
   namespace fs = std::filesystem;
@@ -33,6 +34,21 @@ int main() {
   engine::AstrologEmbeddedEngine chartEngine(astrologDataPath.string());
   std::cout << "Engine version: " << chartEngine.getEngineVersion() << '\n';
 
+  // Load atlas data (optional — UI will work without it)
+  util::AtlasService atlas;
+  {
+    const fs::path atlasPath = current / "atlasbig.as";
+    const fs::path tzPath    = current / "timezone.as";
+    if (atlas.loadAtlas(atlasPath.string()))
+      std::cout << "Atlas loaded: " << atlas.entryCount() << " cities\n";
+    else
+      std::cerr << "Warning: could not load atlas from " << atlasPath << '\n';
+    if (atlas.loadTimezones(tzPath.string()))
+      std::cout << "Timezone data loaded\n";
+    else
+      std::cerr << "Warning: could not load timezone data from " << tzPath << '\n';
+  }
+
   // Launch GUI
-  return ui::runApplication(database, chartEngine);
+  return ui::runApplication(database, chartEngine, atlas);
 }

@@ -11,6 +11,7 @@ set(TEST_SOURCES
   unit/uncertain_time_test.cpp
   unit/birth_event_resolver_test.cpp
   unit/svg_determinism_test.cpp
+  unit/atlas_service_test.cpp
   integration/database_test.cpp
   integration/astrolog_engine_test.cpp
 )
@@ -33,6 +34,7 @@ target_link_libraries(asteria_tests PRIVATE
   asteria_render
   asteria_data
   asteria_automation
+  asteria_util
   GTest::gtest
   GTest::gtest_main
 )
