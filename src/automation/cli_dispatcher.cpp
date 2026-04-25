@@ -1,90 +1,252 @@
 #include "cli_dispatcher.h"
-#include "core/natal_chart_service.h"
+
+#include "core/birth_event_resolver.h"
 #include "core/comparison_chart_service.h"
-#include "render/natal_chart_layout.h"
+#include "core/natal_chart_service.h"
+#include "core/transit_report_service.h"
 #include "render/comparison_chart_layout.h"
-#include "render/transit_chart_layout.h"
+#include "render/natal_chart_layout.h"
 #include "render/theme_presets.h"
+#include "render/transit_chart_layout.h"
+#include "util/atlas_service.h"
+
+#include <filesystem>
+#include <fstream>
 #include <sstream>
+#include <string_view>
 
 namespace asteria::automation {
 
-CliDispatcher::CliDispatcher(engine::IChartEngine& engine) : m_engine(engine) {}
+namespace {
 
-domain::ChartRequest CliDispatcher::makeRequest(
-    std::int64_t primaryId,
-    const std::string& houseSystem,
-    const std::string& zodiacMode) const {
-  domain::ChartRequest request;
-  request.primaryBirthEventId = primaryId;
-  request.defaultHouseSystem = houseSystem;
-  request.zodiacMode = zodiacMode;
-  request.includeHouses = true;
-  return request;
+std::string jsonEscape(std::string_view value) {
+  std::string escaped;
+  escaped.reserve(value.size());
+  for (char ch : value) {
+    switch (ch) {
+      case '\\': escaped += "\\\\"; break;
+      case '"': escaped += "\\\""; break;
+      case '\n': escaped += "\\n"; break;
+      case '\r': escaped += "\\r"; break;
+      case '\t': escaped += "\\t"; break;
+      default: escaped.push_back(ch); break;
+    }
+  }
+  return escaped;
 }
 
-std::string CliDispatcher::chartToJson(const domain::ComputedChart& chart) const {
-  std::ostringstream ss;
-  ss << "{\n";
-  ss << "  \"engineVersion\": \"" << chart.engineVersion << "\",\n";
-  ss << "  \"engineMethod\": \"" << chart.engineMethod << "\",\n";
-  ss << "  \"houseSystem\": \"" << chart.houseSystem << "\",\n";
-  ss << "  \"zodiacMode\": \"" << chart.zodiacMode << "\",\n";
-  ss << "  \"canonicalHash\": \"" << chart.canonicalHash << "\",\n";
-  ss << "  \"planets\": [\n";
-  for (size_t i = 0; i < chart.planets.size(); ++i) {
-    const auto& p = chart.planets[i];
-    ss << "    {\"objectId\": \"" << p.objectId
-       << "\", \"longitude\": " << p.longitudeDegrees
-       << ", \"sign\": \"" << p.sign
-       << "\", \"retrograde\": " << (p.retrograde ? "true" : "false") << "}";
-    if (i + 1 < chart.planets.size()) ss << ",";
-    ss << "\n";
-  }
-  ss << "  ],\n";
-  ss << "  \"houseCusps\": [\n";
-  for (size_t i = 0; i < chart.houseCusps.size(); ++i) {
-    const auto& h = chart.houseCusps[i];
-    ss << "    {\"house\": " << h.houseNumber
-       << ", \"longitude\": " << h.longitudeDegrees << "}";
-    if (i + 1 < chart.houseCusps.size()) ss << ",";
-    ss << "\n";
-  }
-  ss << "  ],\n";
-  ss << "  \"aspects\": [\n";
-  for (size_t i = 0; i < chart.aspects.size(); ++i) {
-    const auto& a = chart.aspects[i];
-    ss << "    {\"objectA\": \"" << a.objectA
-       << "\", \"objectB\": \"" << a.objectB
-       << "\", \"type\": \"" << a.aspectType
-       << "\", \"orb\": " << a.orbDegrees << "}";
-    if (i + 1 < chart.aspects.size()) ss << ",";
-    ss << "\n";
-  }
-  ss << "  ],\n";
-  ss << "  \"uncertaintyFlags\": [";
-  for (size_t i = 0; i < chart.uncertaintyFlags.size(); ++i) {
-    ss << "\"" << chart.uncertaintyFlags[i] << "\"";
-    if (i + 1 < chart.uncertaintyFlags.size()) ss << ", ";
-  }
-  ss << "]\n";
-  ss << "}\n";
-  return ss.str();
+void appendIndent(std::ostringstream& out, int indent) {
+  out << std::string(indent, ' ');
 }
 
-static render::ThemePreset resolveTheme(const std::string& name) {
+void appendStringArray(std::ostringstream& out,
+                       const std::vector<std::string>& values,
+                       int) {
+  out << "[";
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index > 0) out << ", ";
+    out << '"' << jsonEscape(values[index]) << '"';
+  }
+  out << "]";
+}
+
+void appendAspects(std::ostringstream& out,
+                   const std::vector<domain::Aspect>& aspects,
+                   int indent) {
+  out << "[\n";
+  for (std::size_t index = 0; index < aspects.size(); ++index) {
+    const auto& aspect = aspects[index];
+    appendIndent(out, indent + 2);
+    out << "{\"objectA\": \"" << jsonEscape(aspect.objectA)
+        << "\", \"objectB\": \"" << jsonEscape(aspect.objectB)
+        << "\", \"type\": \"" << jsonEscape(aspect.aspectType)
+        << "\", \"orb\": " << aspect.orbDegrees;
+    if (aspect.applyingOrSeparating) {
+      out << ", \"phase\": \"" << jsonEscape(*aspect.applyingOrSeparating) << '"';
+    }
+    out << "}";
+    if (index + 1 < aspects.size()) out << ",";
+    out << "\n";
+  }
+  appendIndent(out, indent);
+  out << "]";
+}
+
+void appendChartJson(std::ostringstream& out,
+                     const domain::ComputedChart& chart,
+                     int indent) {
+  appendIndent(out, indent);
+  out << "{\n";
+
+  appendIndent(out, indent + 2);
+  out << "\"engineVersion\": \"" << jsonEscape(chart.engineVersion) << "\",\n";
+  appendIndent(out, indent + 2);
+  out << "\"engineMethod\": \"" << jsonEscape(chart.engineMethod) << "\",\n";
+  appendIndent(out, indent + 2);
+  out << "\"houseSystem\": \"" << jsonEscape(chart.houseSystem) << "\",\n";
+  appendIndent(out, indent + 2);
+  out << "\"zodiacMode\": \"" << jsonEscape(chart.zodiacMode) << "\",\n";
+  appendIndent(out, indent + 2);
+  out << "\"canonicalHash\": \"" << jsonEscape(chart.canonicalHash) << "\",\n";
+
+  appendIndent(out, indent + 2);
+  out << "\"planets\": [\n";
+  for (std::size_t index = 0; index < chart.planets.size(); ++index) {
+    const auto& planet = chart.planets[index];
+    appendIndent(out, indent + 4);
+    out << "{\"objectId\": \"" << jsonEscape(planet.objectId)
+        << "\", \"longitude\": " << planet.longitudeDegrees
+        << ", \"sign\": \"" << jsonEscape(planet.sign)
+        << "\", \"retrograde\": " << (planet.retrograde ? "true" : "false") << "}";
+    if (index + 1 < chart.planets.size()) out << ",";
+    out << "\n";
+  }
+  appendIndent(out, indent + 2);
+  out << "],\n";
+
+  appendIndent(out, indent + 2);
+  out << "\"houseCusps\": [\n";
+  for (std::size_t index = 0; index < chart.houseCusps.size(); ++index) {
+    const auto& cusp = chart.houseCusps[index];
+    appendIndent(out, indent + 4);
+    out << "{\"house\": " << cusp.houseNumber
+        << ", \"longitude\": " << cusp.longitudeDegrees << "}";
+    if (index + 1 < chart.houseCusps.size()) out << ",";
+    out << "\n";
+  }
+  appendIndent(out, indent + 2);
+  out << "],\n";
+
+  appendIndent(out, indent + 2);
+  out << "\"aspects\": ";
+  appendAspects(out, chart.aspects, indent + 2);
+  out << ",\n";
+
+  appendIndent(out, indent + 2);
+  out << "\"interAspects\": ";
+  appendAspects(out, chart.interAspects, indent + 2);
+  out << ",\n";
+
+  appendIndent(out, indent + 2);
+  out << "\"uncertaintyFlags\": ";
+  appendStringArray(out, chart.uncertaintyFlags, indent + 2);
+  out << ",\n";
+
+  appendIndent(out, indent + 2);
+  out << "\"secondaryChart\": ";
+  if (chart.secondaryChart) {
+    appendChartJson(out, *chart.secondaryChart, indent + 2);
+  } else {
+    out << "null";
+  }
+  out << "\n";
+
+  appendIndent(out, indent);
+  out << "}";
+}
+
+render::ThemePreset resolveTheme(const std::string& name) {
   if (name == "Textbook Monochrome") return render::textbookMonochrome();
   if (name == "Luxury Light") return render::luxuryLight();
   if (name == "Luxury Dark") return render::luxuryDark();
   return render::textbookLight();
 }
 
-CliDispatcher::CliResult CliDispatcher::computeNatal(
-    std::int64_t birthEventId,
+std::string exportChartTypeName(CliDispatcher::ExportChartType chartType) {
+  switch (chartType) {
+    case CliDispatcher::ExportChartType::Natal:
+      return "natal";
+    case CliDispatcher::ExportChartType::Synastry:
+      return "synastry";
+    case CliDispatcher::ExportChartType::Composite:
+      return "composite";
+    case CliDispatcher::ExportChartType::TransitToNatal:
+      return "transit_to_natal";
+  }
+  return "natal";
+}
+
+domain::LocationResolution toLocationResolution(const util::AtlasEntry& entry,
+                                                const std::string& query) {
+  domain::LocationResolution resolution;
+  resolution.queryText = query;
+  resolution.displayName = entry.name;
+  resolution.region = entry.regionCode;
+  resolution.latitude = entry.latitude;
+  resolution.longitude = entry.longitude;
+  resolution.timezoneName = entry.timezoneName;
+  resolution.resolutionMethod = "atlas";
+  resolution.confidenceScore = 0.9;
+  return resolution;
+}
+
+}  // namespace
+
+CliDispatcher::CliDispatcher(engine::IChartEngine& engine,
+                             util::AtlasService* atlasService)
+    : m_engine(engine),
+      m_atlasService(atlasService) {}
+
+domain::ChartRequest CliDispatcher::makeRequest(
     const std::string& houseSystem,
     const std::string& zodiacMode) const {
-  auto request = makeRequest(birthEventId, houseSystem, zodiacMode);
+  domain::ChartRequest request;
+  request.defaultHouseSystem = houseSystem;
+  request.zodiacMode = zodiacMode;
+  request.includeHouses = true;
+  return request;
+}
+
+asteria::core::Result<domain::ResolvedBirthInput> CliDispatcher::resolveBirthInput(
+    const BirthInputOptions& options,
+    const std::string& label) const {
+  auto input = core::resolveTransitMoment(options.dateTime,
+                                          options.latitudeDegrees,
+                                          options.longitudeDegrees,
+                                          options.timezoneHours);
+  if (!input) {
+    return asteria::core::Result<domain::ResolvedBirthInput>::failure(
+        {"invalid_datetime", label + " datetime must be YYYY-MM-DDTHH:MM[:SS]."});
+  }
+
+  input->dstHours = options.dstHours;
+  return asteria::core::Result<domain::ResolvedBirthInput>::success(*input);
+}
+
+std::string CliDispatcher::chartToJson(const domain::ComputedChart& chart) const {
+  std::ostringstream out;
+  appendChartJson(out, chart, 0);
+  out << "\n";
+  return out.str();
+}
+
+std::string CliDispatcher::locationsToJson(
+    const std::vector<domain::LocationResolution>& locations) {
+  std::ostringstream out;
+  out << "{\n  \"results\": [\n";
+  for (std::size_t index = 0; index < locations.size(); ++index) {
+    const auto& location = locations[index];
+    out << "    {\"displayName\": \"" << jsonEscape(location.displayName)
+        << "\", \"latitude\": " << location.latitude
+        << ", \"longitude\": " << location.longitude
+        << ", \"timezone\": \"" << jsonEscape(location.timezoneName)
+        << "\", \"confidence\": " << location.confidenceScore << "}";
+    if (index + 1 < locations.size()) out << ",";
+    out << "\n";
+  }
+  out << "  ]\n}\n";
+  return out.str();
+}
+
+CliDispatcher::CliResult CliDispatcher::computeNatal(
+    const NatalChartOptions& options) const {
+  auto primaryInput = resolveBirthInput(options.primary, "Primary");
+  if (!primaryInput.ok()) return {false, "", primaryInput.error().message};
+
+  auto request = makeRequest(options.houseSystem, options.zodiacMode);
   request.chartType = domain::ChartType::Natal;
+  request.primaryInput = primaryInput.value();
+
   core::NatalChartService service(const_cast<engine::IChartEngine&>(m_engine));
   auto result = service.compute(request);
   if (!result.ok()) return {false, "", result.error().message};
@@ -92,13 +254,17 @@ CliDispatcher::CliResult CliDispatcher::computeNatal(
 }
 
 CliDispatcher::CliResult CliDispatcher::computeSynastry(
-    std::int64_t primaryBirthEventId,
-    std::int64_t secondaryBirthEventId,
-    const std::string& houseSystem,
-    const std::string& zodiacMode) const {
-  auto request = makeRequest(primaryBirthEventId, houseSystem, zodiacMode);
+    const ComparisonChartOptions& options) const {
+  auto primaryInput = resolveBirthInput(options.primary, "Primary");
+  if (!primaryInput.ok()) return {false, "", primaryInput.error().message};
+  auto secondaryInput = resolveBirthInput(options.secondary, "Secondary");
+  if (!secondaryInput.ok()) return {false, "", secondaryInput.error().message};
+
+  auto request = makeRequest(options.houseSystem, options.zodiacMode);
   request.chartType = domain::ChartType::Synastry;
-  request.secondaryBirthEventId = secondaryBirthEventId;
+  request.primaryInput = primaryInput.value();
+  request.secondaryInput = secondaryInput.value();
+
   core::ComparisonChartService service(const_cast<engine::IChartEngine&>(m_engine));
   auto result = service.computeSynastry(request);
   if (!result.ok()) return {false, "", result.error().message};
@@ -106,13 +272,17 @@ CliDispatcher::CliResult CliDispatcher::computeSynastry(
 }
 
 CliDispatcher::CliResult CliDispatcher::computeComposite(
-    std::int64_t primaryBirthEventId,
-    std::int64_t secondaryBirthEventId,
-    const std::string& houseSystem,
-    const std::string& zodiacMode) const {
-  auto request = makeRequest(primaryBirthEventId, houseSystem, zodiacMode);
+    const ComparisonChartOptions& options) const {
+  auto primaryInput = resolveBirthInput(options.primary, "Primary");
+  if (!primaryInput.ok()) return {false, "", primaryInput.error().message};
+  auto secondaryInput = resolveBirthInput(options.secondary, "Secondary");
+  if (!secondaryInput.ok()) return {false, "", secondaryInput.error().message};
+
+  auto request = makeRequest(options.houseSystem, options.zodiacMode);
   request.chartType = domain::ChartType::Composite;
-  request.secondaryBirthEventId = secondaryBirthEventId;
+  request.primaryInput = primaryInput.value();
+  request.secondaryInput = secondaryInput.value();
+
   core::ComparisonChartService service(const_cast<engine::IChartEngine&>(m_engine));
   auto result = service.computeComposite(request);
   if (!result.ok()) return {false, "", result.error().message};
@@ -120,82 +290,229 @@ CliDispatcher::CliResult CliDispatcher::computeComposite(
 }
 
 CliDispatcher::CliResult CliDispatcher::computeTransitToNatal(
-    std::int64_t birthEventId,
-    const std::string& transitDateTime,
-    const std::string& houseSystem,
-    const std::string& zodiacMode) const {
-  auto request = makeRequest(birthEventId, houseSystem, zodiacMode);
+    const TransitChartOptions& options) const {
+  auto primaryInput = resolveBirthInput(options.primary, "Primary");
+  if (!primaryInput.ok()) return {false, "", primaryInput.error().message};
+  auto transitInput = resolveBirthInput(options.transit, "Transit");
+  if (!transitInput.ok()) return {false, "", transitInput.error().message};
+
+  auto request = makeRequest(options.houseSystem, options.zodiacMode);
   request.chartType = domain::ChartType::TransitToNatal;
-  request.requestTimeContext = transitDateTime;
+  request.primaryInput = primaryInput.value();
+  request.transitInput = transitInput.value();
+  request.requestTimeContext = options.transit.dateTime;
+
   core::ComparisonChartService service(const_cast<engine::IChartEngine&>(m_engine));
   auto result = service.computeTransitToNatal(request);
   if (!result.ok()) return {false, "", result.error().message};
   return {true, chartToJson(result.value()), ""};
 }
 
-CliDispatcher::CliResult CliDispatcher::exportSvg(
-    std::int64_t birthEventId,
-    const std::string& outputPath,
-    const std::string& themeName) const {
-  auto request = makeRequest(birthEventId, "Placidus", "Tropical");
-  request.chartType = domain::ChartType::Natal;
-  auto result = m_engine.computeNatalChart(request);
-  if (!result.ok()) return {false, "", result.error().message};
+CliDispatcher::CliResult CliDispatcher::generateTransitTimeline(
+    const TransitTimelineOptions& options) const {
+  auto natalInput = resolveBirthInput(options.natal, "Natal");
+  if (!natalInput.ok()) return {false, "", natalInput.error().message};
 
-  auto theme = resolveTheme(themeName);
-  auto scene = render::buildNatalChartScene(result.value(), theme);
+  core::TransitReportService::Request request;
+  request.chartRequest.chartType = domain::ChartType::Natal;
+  request.chartRequest.defaultHouseSystem = options.houseSystem;
+  request.chartRequest.zodiacMode = options.zodiacMode;
+  request.chartRequest.primaryInput = natalInput.value();
+  request.subjectName = options.subjectName;
+  request.startDateTime = options.startDateTime;
+  request.rangeYears = options.rangeYears;
+  request.rules = options.rules;
+
+  core::TransitReportService service(const_cast<engine::IChartEngine&>(m_engine));
+  auto result = service.generate(request);
+  if (!result.ok()) {
+    return {false, "", result.error().message};
+  }
+
+  if (!options.outputPath.empty()) {
+    std::filesystem::path outputPath(options.outputPath);
+    if (outputPath.has_parent_path()) {
+      std::error_code ec;
+      std::filesystem::create_directories(outputPath.parent_path(), ec);
+      if (ec) {
+        return {false, "", "Failed to create output directory: " + outputPath.parent_path().string()};
+      }
+    }
+
+    std::ofstream out(options.outputPath, std::ios::binary | std::ios::trunc);
+    if (!out) {
+      return {false, "", "Failed to open output file: " + options.outputPath};
+    }
+    out << result.value().bodyMarkdown;
+    if (!out.good()) {
+      return {false, "", "Failed to write output file: " + options.outputPath};
+    }
+  }
+
+  return {true, result.value().bodyMarkdown, ""};
+}
+
+asteria::core::Result<domain::ComputedChart> CliDispatcher::computeExportChart(
+    const ExportChartOptions& options) const {
+  switch (options.chartType) {
+    case ExportChartType::Natal: {
+      auto primaryInput = resolveBirthInput(options.primary, "Primary");
+      if (!primaryInput.ok()) {
+        return asteria::core::Result<domain::ComputedChart>::failure(primaryInput.error());
+      }
+
+      auto request = makeRequest(options.houseSystem, options.zodiacMode);
+      request.chartType = domain::ChartType::Natal;
+      request.primaryInput = primaryInput.value();
+
+      core::NatalChartService service(const_cast<engine::IChartEngine&>(m_engine));
+      return service.compute(request);
+    }
+    case ExportChartType::Synastry: {
+      auto primaryInput = resolveBirthInput(options.primary, "Primary");
+      if (!primaryInput.ok()) {
+        return asteria::core::Result<domain::ComputedChart>::failure(primaryInput.error());
+      }
+      auto secondaryInput = resolveBirthInput(options.secondary, "Secondary");
+      if (!secondaryInput.ok()) {
+        return asteria::core::Result<domain::ComputedChart>::failure(secondaryInput.error());
+      }
+
+      auto request = makeRequest(options.houseSystem, options.zodiacMode);
+      request.chartType = domain::ChartType::Synastry;
+      request.primaryInput = primaryInput.value();
+      request.secondaryInput = secondaryInput.value();
+
+      core::ComparisonChartService service(const_cast<engine::IChartEngine&>(m_engine));
+      return service.computeSynastry(request);
+    }
+    case ExportChartType::Composite: {
+      auto primaryInput = resolveBirthInput(options.primary, "Primary");
+      if (!primaryInput.ok()) {
+        return asteria::core::Result<domain::ComputedChart>::failure(primaryInput.error());
+      }
+      auto secondaryInput = resolveBirthInput(options.secondary, "Secondary");
+      if (!secondaryInput.ok()) {
+        return asteria::core::Result<domain::ComputedChart>::failure(secondaryInput.error());
+      }
+
+      auto request = makeRequest(options.houseSystem, options.zodiacMode);
+      request.chartType = domain::ChartType::Composite;
+      request.primaryInput = primaryInput.value();
+      request.secondaryInput = secondaryInput.value();
+
+      core::ComparisonChartService service(const_cast<engine::IChartEngine&>(m_engine));
+      return service.computeComposite(request);
+    }
+    case ExportChartType::TransitToNatal: {
+      auto primaryInput = resolveBirthInput(options.primary, "Primary");
+      if (!primaryInput.ok()) {
+        return asteria::core::Result<domain::ComputedChart>::failure(primaryInput.error());
+      }
+      auto transitInput = resolveBirthInput(options.transit, "Transit");
+      if (!transitInput.ok()) {
+        return asteria::core::Result<domain::ComputedChart>::failure(transitInput.error());
+      }
+
+      auto request = makeRequest(options.houseSystem, options.zodiacMode);
+      request.chartType = domain::ChartType::TransitToNatal;
+      request.primaryInput = primaryInput.value();
+      request.transitInput = transitInput.value();
+      request.requestTimeContext = options.transit.dateTime;
+
+      core::ComparisonChartService service(const_cast<engine::IChartEngine&>(m_engine));
+      return service.computeTransitToNatal(request);
+    }
+  }
+
+  return asteria::core::Result<domain::ComputedChart>::failure(
+      {"invalid_chart_type", "Unsupported export chart type."});
+}
+
+asteria::core::Result<render::ChartScene> CliDispatcher::buildExportScene(
+    const ExportChartOptions& options,
+    const domain::ComputedChart& chart,
+    const render::ThemePreset& theme) const {
+  switch (options.chartType) {
+    case ExportChartType::Natal:
+      return asteria::core::Result<render::ChartScene>::success(
+          render::buildNatalChartScene(chart, theme));
+    case ExportChartType::Synastry:
+      if (!chart.secondaryChart) {
+        return asteria::core::Result<render::ChartScene>::failure(
+            {"missing_secondary_chart", "Synastry export requires the secondary chart to be present."});
+      }
+      return asteria::core::Result<render::ChartScene>::success(
+          render::buildSynastryChartScene(chart, *chart.secondaryChart, theme));
+    case ExportChartType::Composite:
+      return asteria::core::Result<render::ChartScene>::success(
+          render::buildCompositeChartScene(chart, theme));
+    case ExportChartType::TransitToNatal:
+      if (!chart.secondaryChart) {
+        return asteria::core::Result<render::ChartScene>::failure(
+            {"missing_secondary_chart", "Transit export requires the transit chart to be present."});
+      }
+      return asteria::core::Result<render::ChartScene>::success(
+          render::buildTransitToNatalChartScene(chart, *chart.secondaryChart, theme));
+  }
+
+  return asteria::core::Result<render::ChartScene>::failure(
+      {"invalid_chart_type", "Unsupported export chart type."});
+}
+
+CliDispatcher::CliResult CliDispatcher::exportSvg(
+    const ExportChartOptions& options) const {
+  auto chart = computeExportChart(options);
+  if (!chart.ok()) return {false, "", chart.error().message};
+
+  auto theme = resolveTheme(options.themeName);
+  auto scene = buildExportScene(options, chart.value(), theme);
+  if (!scene.ok()) return {false, "", scene.error().message};
+
   core::ExportMetadata metadata;
-  metadata.chartType = "natal";
+  metadata.chartType = exportChartTypeName(options.chartType);
   metadata.exportProfile = "vector";
   metadata.layoutTemplate = "chart_only";
-  metadata.hasWarnings = !result.value().uncertaintyFlags.empty();
-  auto exportResult = m_exportService.exportSvg(scene, result.value().computedChartId, outputPath, theme, metadata);
+  metadata.hasWarnings = !chart.value().uncertaintyFlags.empty();
+  auto exportResult = m_exportService.exportSvg(scene.value(), chart.value().computedChartId,
+                                                options.outputPath, theme, metadata);
   if (!exportResult.ok()) return {false, "", exportResult.error().message};
-  return {true, R"({"exported":")" + outputPath + R"(","format":"svg"})", ""};
+  return {true, R"({"exported":")" + options.outputPath + R"(","format":"svg"})", ""};
 }
 
 CliDispatcher::CliResult CliDispatcher::exportPng(
-    std::int64_t birthEventId,
-    const std::string& outputPath,
-    int widthPx, int heightPx, int dpi,
-    const std::string& themeName) const {
-  auto request = makeRequest(birthEventId, "Placidus", "Tropical");
-  request.chartType = domain::ChartType::Natal;
-  auto result = m_engine.computeNatalChart(request);
-  if (!result.ok()) return {false, "", result.error().message};
+    const ExportChartOptions& options) const {
+  auto chart = computeExportChart(options);
+  if (!chart.ok()) return {false, "", chart.error().message};
 
-  auto theme = resolveTheme(themeName);
-  auto scene = render::buildNatalChartScene(result.value(), theme);
+  auto theme = resolveTheme(options.themeName);
+  auto scene = buildExportScene(options, chart.value(), theme);
+  if (!scene.ok()) return {false, "", scene.error().message};
+
   core::ExportMetadata metadata;
-  metadata.chartType = "natal";
+  metadata.chartType = exportChartTypeName(options.chartType);
   metadata.exportProfile = "custom";
   metadata.layoutTemplate = "chart_only";
-  metadata.hasWarnings = !result.value().uncertaintyFlags.empty();
-  auto exportResult = m_exportService.exportPng(scene, result.value().computedChartId,
-                                                 outputPath, widthPx, heightPx, dpi, theme, metadata);
+  metadata.hasWarnings = !chart.value().uncertaintyFlags.empty();
+  auto exportResult = m_exportService.exportPng(scene.value(), chart.value().computedChartId,
+                                                options.outputPath, options.widthPx,
+                                                options.heightPx, options.dpi, theme, metadata);
   if (!exportResult.ok()) return {false, "", exportResult.error().message};
-  return {true, R"({"exported":")" + outputPath + R"(","format":"png"})", ""};
+  return {true, R"({"exported":")" + options.outputPath + R"(","format":"png"})", ""};
 }
 
 CliDispatcher::CliResult CliDispatcher::resolveLocation(const std::string& query) const {
+  if (m_atlasService != nullptr && m_atlasService->isLoaded()) {
+    std::vector<domain::LocationResolution> locations;
+    for (const auto* entry : m_atlasService->search(query, 20)) {
+      locations.push_back(toLocationResolution(*entry, query));
+    }
+    return {true, locationsToJson(locations), ""};
+  }
+
   auto result = m_engine.resolveLocation(query);
   if (!result.ok()) return {false, "", result.error().message};
-
-  std::ostringstream ss;
-  ss << "{\n  \"results\": [\n";
-  const auto& locations = result.value();
-  for (size_t i = 0; i < locations.size(); ++i) {
-    const auto& loc = locations[i];
-    ss << "    {\"displayName\": \"" << loc.displayName
-       << "\", \"latitude\": " << loc.latitude
-       << ", \"longitude\": " << loc.longitude
-       << ", \"timezone\": \"" << loc.timezoneName
-       << "\", \"confidence\": " << loc.confidenceScore << "}";
-    if (i + 1 < locations.size()) ss << ",";
-    ss << "\n";
-  }
-  ss << "  ]\n}\n";
-  return {true, ss.str(), ""};
+  return {true, locationsToJson(result.value()), ""};
 }
 
 }  // namespace asteria::automation

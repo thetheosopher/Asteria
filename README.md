@@ -54,6 +54,112 @@ n    - Qt UI shell
     third_party/        Vendored external code (Astrolog placeholder only)
     ```
 
+    ## Automation CLI
+
+      The automation executable is built at `build/default/src/automation/Debug/asteria_cli.exe` and now uses the real embedded Astrolog engine for chart computation and export commands.
+
+      Every compute, export, and timeline command also accepts `--input <path>` to load the same request fields from a JSON object file. Inline flags take precedence over the JSON file, so you can keep a reusable request on disk and override just the fields you need for a one-off run.
+
+    Example commands:
+
+    ```powershell
+    .\build\default\src\automation\Debug\asteria_cli.exe compute-natal `
+       --primary-datetime 1990-01-01T12:00 `
+       --primary-latitude 40 `
+       --primary-longitude -75 `
+       --primary-timezone -5
+
+    .\build\default\src\automation\Debug\asteria_cli.exe compute-synastry `
+       --primary-datetime 1990-01-01T12:00 `
+       --primary-latitude 40 `
+       --primary-longitude -75 `
+       --primary-timezone -5 `
+       --secondary-datetime 1992-05-12T08:30 `
+       --secondary-latitude 34 `
+       --secondary-longitude -118 `
+       --secondary-timezone -8
+
+    .\build\default\src\automation\Debug\asteria_cli.exe compute-transit `
+       --primary-datetime 1990-01-01T12:00 `
+       --primary-latitude 40 `
+       --primary-longitude -75 `
+       --primary-timezone -5 `
+       --transit-datetime 2026-04-24T12:00
+
+    .\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline `
+       --natal-datetime 1990-01-01T12:00 `
+       --natal-latitude 40 `
+       --natal-longitude -75 `
+       --natal-timezone -5 `
+       --start 2026-01-01T00:00 `
+       --years 5 `
+       --transit-planets Jupiter,Saturn,Uranus `
+       --aspects Conjunction,Square,Opposition `
+       --output .\reports\transit_timeline.md
+
+    .\build\default\src\automation\Debug\asteria_cli.exe export-svg `
+       --chart-type transit `
+       --primary-datetime 1990-01-01T12:00 `
+       --primary-latitude 40 `
+       --primary-longitude -75 `
+       --primary-timezone -5 `
+       --transit-datetime 2026-04-24T12:00 `
+       --output .\exports\transit_chart.svg
+
+    .\build\default\src\automation\Debug\asteria_cli.exe resolve-location --query Denver
+    ```
+
+      Example JSON request files:
+
+      ```json
+      {
+         "primary": {
+            "datetime": "1990-01-01T12:00",
+            "latitude": 40.0,
+            "longitude": -75.0,
+            "timezone": -5.0,
+            "dst": 0.0
+         },
+         "houseSystem": "Placidus",
+         "zodiacMode": "Tropical"
+      }
+      ```
+
+      ```powershell
+      .\build\default\src\automation\Debug\asteria_cli.exe compute-natal --input .\requests\natal.json
+
+      .\build\default\src\automation\Debug\asteria_cli.exe compute-natal `
+         --input .\requests\natal.json `
+         --house-system Whole
+      ```
+
+      ```json
+      {
+         "subjectName": "Casey Example",
+         "natal": {
+            "datetime": "1990-01-01T12:00",
+            "latitude": 40.0,
+            "longitude": -75.0,
+            "timezone": -5.0,
+            "dst": 0.0
+         },
+         "start": "2026-01-01T00:00",
+         "years": 5,
+         "transitPlanets": ["Jupiter", "Saturn", "Uranus"],
+         "aspects": ["Conjunction", "Square", "Opposition"],
+         "orbs": {
+            "Conjunction": 1.0,
+            "Square": 0.8,
+            "Opposition": 1.0
+         },
+         "output": ".\\reports\\transit_timeline.md"
+      }
+      ```
+
+      ```powershell
+      .\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline --input .\requests\timeline.json
+      ```
+
     ## Suggested Next Steps
 
     1. Vendor Astrolog into `third_party/astrolog/`.

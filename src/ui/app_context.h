@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include "data/sqlite_database.h"
 #include "data/person_repository.h"
 #include "data/birth_event_repository.h"
@@ -9,6 +11,7 @@
 #include "core/natal_chart_service.h"
 #include "core/comparison_chart_service.h"
 #include "core/interpretation_service.h"
+#include "core/transit_report_service.h"
 #include "core/export_service.h"
 #include "util/atlas_service.h"
 
@@ -22,10 +25,12 @@ struct AppContext {
   data::BirthEventRepository birthEventRepo;
   data::LocationRepository locationRepo;
   data::ChartRepository chartRepo;
+  std::mutex engineMutex;
   engine::IChartEngine& chartEngine;
   core::NatalChartService natalService;
   core::ComparisonChartService comparisonService;
   core::InterpretationService interpretationService;
+  core::TransitReportService transitReportService;
   core::ExportService exportService;
   util::AtlasService atlasService;
 
@@ -37,7 +42,8 @@ struct AppContext {
         chartRepo(db),
         chartEngine(engine),
         natalService(engine),
-        comparisonService(engine) {
+        comparisonService(engine),
+        transitReportService(engine) {
     natalService.attachRepository(&chartRepo);
   }
 

@@ -1,5 +1,6 @@
 add_library(asteria_automation
   automation_stub.cpp
+  cli_json_input.cpp
   cli_dispatcher.cpp
 )
 
@@ -8,4 +9,5 @@ target_link_libraries(asteria_automation PUBLIC asteria_core asteria_engine aste
 
 add_executable(asteria_cli cli_main.cpp)
 target_include_directories(asteria_cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(asteria_cli PRIVATE asteria_automation asteria_engine)
+target_link_libraries(asteria_cli PRIVATE asteria_automation asteria_engine asteria_util)
+target_compile_definitions(asteria_cli PRIVATE ASTERIA_SOURCE_DIR="${PROJECT_SOURCE_DIR}")

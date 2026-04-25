@@ -1,8 +1,12 @@
 #pragma once
+#include "core/export_service.h"
+#include "core/transit_report_service.h"
+#include "engine/ichart_engine.h"
+
 #include <string>
 #include <vector>
-#include "engine/ichart_engine.h"
-#include "core/export_service.h"
+
+namespace asteria::util { class AtlasService; }
 
 namespace asteria::automation {
 
@@ -10,7 +14,8 @@ namespace asteria::automation {
 /// All operations use the same domain and engine layers as the app.
 class CliDispatcher {
  public:
-  explicit CliDispatcher(engine::IChartEngine& engine);
+  explicit CliDispatcher(engine::IChartEngine& engine,
+                         util::AtlasService* atlasService = nullptr);
 
   struct CliResult {
     bool success = false;
@@ -18,45 +23,97 @@ class CliDispatcher {
     std::string errorMessage;
   };
 
-  CliResult computeNatal(std::int64_t birthEventId,
-                         const std::string& houseSystem = "Placidus",
-                         const std::string& zodiacMode = "Tropical") const;
+  struct BirthInputOptions {
+    std::string dateTime;
+    double latitudeDegrees = 0.0;
+    double longitudeDegrees = 0.0;
+    double timezoneHours = 0.0;
+    double dstHours = 0.0;
+  };
 
-  CliResult computeSynastry(std::int64_t primaryBirthEventId,
-                            std::int64_t secondaryBirthEventId,
-                            const std::string& houseSystem = "Placidus",
-                            const std::string& zodiacMode = "Tropical") const;
+  struct NatalChartOptions {
+    BirthInputOptions primary;
+    std::string houseSystem = "Placidus";
+    std::string zodiacMode = "Tropical";
+  };
 
-  CliResult computeComposite(std::int64_t primaryBirthEventId,
-                             std::int64_t secondaryBirthEventId,
-                             const std::string& houseSystem = "Placidus",
-                             const std::string& zodiacMode = "Tropical") const;
+  struct ComparisonChartOptions {
+    BirthInputOptions primary;
+    BirthInputOptions secondary;
+    std::string houseSystem = "Placidus";
+    std::string zodiacMode = "Tropical";
+  };
 
-  CliResult computeTransitToNatal(std::int64_t birthEventId,
-                                  const std::string& transitDateTime,
-                                  const std::string& houseSystem = "Placidus",
-                                  const std::string& zodiacMode = "Tropical") const;
+  struct TransitChartOptions {
+    BirthInputOptions primary;
+    BirthInputOptions transit;
+    std::string houseSystem = "Placidus";
+    std::string zodiacMode = "Tropical";
+  };
 
-  CliResult exportSvg(std::int64_t birthEventId,
-                      const std::string& outputPath,
-                      const std::string& themeName = "Textbook Light") const;
+  enum class ExportChartType {
+    Natal,
+    Synastry,
+    Composite,
+    TransitToNatal,
+  };
 
-  CliResult exportPng(std::int64_t birthEventId,
-                      const std::string& outputPath,
-                      int widthPx = 1000,
-                      int heightPx = 1000,
-                      int dpi = 150,
-                      const std::string& themeName = "Textbook Light") const;
+  struct ExportChartOptions {
+    ExportChartType chartType = ExportChartType::Natal;
+    BirthInputOptions primary;
+    BirthInputOptions secondary;
+    BirthInputOptions transit;
+    std::string houseSystem = "Placidus";
+    std::string zodiacMode = "Tropical";
+    std::string outputPath;
+    std::string themeName = "Textbook Light";
+    int widthPx = 1000;
+    int heightPx = 1000;
+    int dpi = 150;
+  };
+
+  struct TransitTimelineOptions {
+    std::string subjectName;
+    BirthInputOptions natal;
+    std::string startDateTime;
+    double rangeYears = 5.0;
+    std::string houseSystem = "Placidus";
+    std::string zodiacMode = "Tropical";
+    core::TransitReportService::Rules rules = core::TransitReportService::defaultRules();
+    std::string outputPath;
+  };
+
+  CliResult computeNatal(const NatalChartOptions& options) const;
+
+  CliResult computeSynastry(const ComparisonChartOptions& options) const;
+
+  CliResult computeComposite(const ComparisonChartOptions& options) const;
+
+  CliResult computeTransitToNatal(const TransitChartOptions& options) const;
+
+  CliResult generateTransitTimeline(const TransitTimelineOptions& options) const;
+
+  CliResult exportSvg(const ExportChartOptions& options) const;
+
+  CliResult exportPng(const ExportChartOptions& options) const;
 
   CliResult resolveLocation(const std::string& query) const;
+  static std::string locationsToJson(const std::vector<domain::LocationResolution>& locations);
 
  private:
   engine::IChartEngine& m_engine;
+  util::AtlasService* m_atlasService = nullptr;
   core::ExportService m_exportService;
 
-  domain::ChartRequest makeRequest(std::int64_t primaryId,
-                                   const std::string& houseSystem,
+  domain::ChartRequest makeRequest(const std::string& houseSystem,
                                    const std::string& zodiacMode) const;
+  asteria::core::Result<domain::ResolvedBirthInput> resolveBirthInput(
+      const BirthInputOptions& options,
+      const std::string& label) const;
+  asteria::core::Result<domain::ComputedChart> computeExportChart(const ExportChartOptions& options) const;
+  asteria::core::Result<render::ChartScene> buildExportScene(const ExportChartOptions& options,
+                                                             const domain::ComputedChart& chart,
+                                                             const render::ThemePreset& theme) const;
   std::string chartToJson(const domain::ComputedChart& chart) const;
 };
 

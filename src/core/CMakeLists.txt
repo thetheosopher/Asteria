@@ -5,6 +5,7 @@ add_library(asteria_core
   interpretation_service.cpp
   export_service.cpp
   birth_event_resolver.cpp
+  transit_report_service.cpp
 )
 
 target_include_directories(asteria_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

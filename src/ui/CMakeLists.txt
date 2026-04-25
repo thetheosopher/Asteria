@@ -7,6 +7,7 @@ add_library(asteria_ui STATIC
   library_panel.cpp
   markdown_render.cpp
   chart_workspace_panel.cpp
+  transit_timeline_panel.cpp
   compare_workspace_panel.cpp
   settings_panel.cpp
   ai_interpretation_panel.cpp

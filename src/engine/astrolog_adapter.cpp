@@ -6,6 +6,7 @@
 extern "C++" {
 #include "astrolog.h"
 #include "extern.h"
+#include "swephexp.h"
 }
 
 namespace asteria::engine {
@@ -19,17 +20,24 @@ bool AstrologAdapter::initialize(const std::string& dataPath) {
   if (s_initialized) return true;
 
   s_dataPath = dataPath;
+  const std::string ephemPath = (std::filesystem::path(dataPath) / "ephem").string();
 
   // Set environment variable so Astrolog can find its data files
   // (astrolog.as, atlas.as, timezone.as, ephem/)
 #ifdef _WIN32
   _putenv_s("ASTROLOG", dataPath.c_str());
+  _putenv_s("SE_EPHE_PATH", ephemPath.c_str());
 #else
   setenv("ASTROLOG", dataPath.c_str(), 1);
+  setenv("SE_EPHE_PATH", ephemPath.c_str(), 1);
 #endif
 
   // Initialize Astrolog's global state (tables, defaults, restrictions)
   InitProgram();
+
+  if (std::filesystem::exists(ephemPath)) {
+    swe_set_ephe_path(ephemPath.c_str());
+  }
 
   // Configure for computation-only use (no display, no file output)
   us.fEphemFiles = fTrue;   // Use Swiss Ephemeris for accuracy

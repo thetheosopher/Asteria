@@ -13,6 +13,7 @@
 #include "imgui.h"
 #include <array>
 #include <cmath>
+#include <mutex>
 #include <sstream>
 #include <algorithm>
 #include <vector>
@@ -422,10 +423,12 @@ void ChartWorkspacePanel::computeChart() {
   // through the engine's hash format using only inputs (the engine recomputes
   // the same hash). To avoid duplicating the formula here, just call compute
   // and then optionally persist; the engine already returns identical data.
-  core::Result<domain::ComputedChart> result =
-      (req.chartType == domain::ChartType::TransitToNatal)
-          ? m_ctx.comparisonService.computeTransitToNatal(req)
-          : m_ctx.natalService.compute(req);
+  core::Result<domain::ComputedChart> result = [&]() {
+    std::lock_guard<std::mutex> engineLock(m_ctx.engineMutex);
+    return (req.chartType == domain::ChartType::TransitToNatal)
+        ? m_ctx.comparisonService.computeTransitToNatal(req)
+        : m_ctx.natalService.compute(req);
+  }();
 
   if (!result.ok()) {
     statusMessage_ = "Computation failed: " + result.error().message;

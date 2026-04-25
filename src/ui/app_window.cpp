@@ -13,6 +13,7 @@
 
 #include "library_panel.h"
 #include "chart_workspace_panel.h"
+#include "transit_timeline_panel.h"
 #include "compare_workspace_panel.h"
 #include "settings_panel.h"
 #include "ai_interpretation_panel.h"
@@ -209,10 +210,12 @@ void applyDefaultDockLayout(ImGuiID dockspaceId,
                             bool showAiInterpretation,
                             LibraryPanel& libraryPanel,
                             ChartWorkspacePanel& chartPanel,
+                            TransitTimelinePanel& transitTimelinePanel,
                             CompareWorkspacePanel& comparePanel,
                             AiInterpretationPanel& aiPanel) {
   libraryPanel.open = true;
   chartPanel.open = true;
+  transitTimelinePanel.open = true;
   comparePanel.open = true;
   aiPanel.open = showAiInterpretation;
 
@@ -226,6 +229,7 @@ void applyDefaultDockLayout(ImGuiID dockspaceId,
 
   ImGui::DockBuilderDockWindow("Library", leftDockId);
   ImGui::DockBuilderDockWindow("Chart Workspace", rightDockId);
+  ImGui::DockBuilderDockWindow("Transit Timeline", rightDockId);
   ImGui::DockBuilderDockWindow("Compare Workspace", rightDockId);
   ImGui::DockBuilderDockWindow("AI Interpretation", rightDockId);
 
@@ -292,6 +296,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
   // Workspace panels
   LibraryPanel libraryPanel(ctx);
   ChartWorkspacePanel chartPanel(ctx);
+  TransitTimelinePanel transitTimelinePanel(ctx);
   CompareWorkspacePanel comparePanel(ctx);
   SettingsPanel settingsPanel(ctx);
   AiInterpretationPanel aiPanel(ctx);
@@ -351,6 +356,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
           if (ImGui::BeginMenu("Panels")) {
             ImGui::MenuItem("Library",   nullptr, &libraryPanel.open);
             ImGui::MenuItem("Chart",     nullptr, &chartPanel.open);
+            ImGui::MenuItem("Transit Timeline", nullptr, &transitTimelinePanel.open);
             ImGui::MenuItem("Compare",   nullptr, &comparePanel.open);
             ImGui::MenuItem("AI Interpretation", nullptr, &aiPanel.open);
             ImGui::EndMenu();
@@ -375,6 +381,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
                                settingsPanel.isOllamaEnabled(),
                                libraryPanel,
                                chartPanel,
+                               transitTimelinePanel,
                                comparePanel,
                                aiPanel);
         resetToDefaultLayout = false;
@@ -385,7 +392,9 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
     // Draw workspace panels
     libraryPanel.draw();
     chartPanel.setSelectedPerson(libraryPanel.selectedPersonId());
+    transitTimelinePanel.setSelectedPerson(libraryPanel.selectedPersonId());
     chartPanel.draw();
+    transitTimelinePanel.draw();
     comparePanel.draw();
     aiPanel.draw();
 

@@ -6,8 +6,10 @@ set(TEST_SOURCES
   unit/comparison_service_test.cpp
   unit/comparison_render_test.cpp
   unit/interpretation_test.cpp
+  unit/transit_report_service_test.cpp
   unit/export_test.cpp
   unit/cli_dispatcher_test.cpp
+  unit/cli_json_input_test.cpp
   unit/uncertain_time_test.cpp
   unit/birth_event_resolver_test.cpp
   unit/svg_determinism_test.cpp

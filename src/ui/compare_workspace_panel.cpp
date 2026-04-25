@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -139,7 +140,10 @@ void CompareWorkspacePanel::computeComparison() {
   if (compareMode_ == 0) {
     // Synastry — engine returns combined chart with secondaryChart + interAspects
     req.chartType = domain::ChartType::Synastry;
-    auto res = m_ctx.comparisonService.computeSynastry(req);
+    auto res = [&]() {
+      std::lock_guard<std::mutex> engineLock(m_ctx.engineMutex);
+      return m_ctx.comparisonService.computeSynastry(req);
+    }();
     if (!res.ok()) {
       statusMessage_ = "Synastry failed: " + res.error().message;
       m_hasResult = false;
@@ -163,7 +167,10 @@ void CompareWorkspacePanel::computeComparison() {
   } else {
     // Composite — engine returns midpoint chart
     req.chartType = domain::ChartType::Composite;
-    auto res = m_ctx.comparisonService.computeComposite(req);
+    auto res = [&]() {
+      std::lock_guard<std::mutex> engineLock(m_ctx.engineMutex);
+      return m_ctx.comparisonService.computeComposite(req);
+    }();
     if (!res.ok()) {
       statusMessage_ = "Composite failed: " + res.error().message;
       m_hasResult = false;
