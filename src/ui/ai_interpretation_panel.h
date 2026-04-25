@@ -26,12 +26,21 @@ class AiInterpretationPanel {
   void draw();
 
   /// Called by chart panels whenever a new chart is computed.
-  void setChart(const domain::ComputedChart& chart, domain::ChartType type);
+  void setChart(const domain::ComputedChart& chart,
+                domain::ChartType type,
+                std::string sourceLabel = {});
+
+  /// Called by workspace AI buttons to open/focus the panel and start generation.
+  void requestInterpretation(const domain::ComputedChart& chart,
+                             domain::ChartType type,
+                             std::string sourceLabel = {});
 
  private:
   void startGeneration();
   void stopGeneration();
   void saveInterpretation();
+  void clearOutputState();
+  std::string currentAnalysisLabel() const;
   std::string buildPrompt() const;
   std::string chartFactsBlock() const;
 
@@ -40,6 +49,8 @@ class AiInterpretationPanel {
   // Chart data (set from main thread).
   std::optional<domain::ComputedChart> m_chart;
   domain::ChartType m_chartType = domain::ChartType::Natal;
+  std::string m_sourceLabel;
+  bool m_focusOnNextDraw = false;
 
   // User addendum field.
   char m_focusBuf[512] = {};

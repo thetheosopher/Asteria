@@ -327,6 +327,7 @@ void ChartWorkspacePanel::setSelectedPerson(std::int64_t personId) {
   m_birthEvent.reset();
   m_location.reset();
   m_chart.reset();
+  m_lastComputedAiSourceLabel_.clear();
   m_hasScene = false;
   interpretationText_.clear();
   statusMessage_.clear();
@@ -436,12 +437,19 @@ void ChartWorkspacePanel::computeChart() {
   m_chart = result.value();
   m_scene = render::buildNatalChartScene(*m_chart, currentThemePreset());
   m_hasScene = true;
+  const std::string subjectLabel = m_person
+      ? (m_person->displayName.empty() ? m_person->fullName : m_person->displayName)
+      : std::string("selected person");
+  m_lastComputedAiChartType_ = req.chartType;
+  m_lastComputedAiSourceLabel_ = (req.chartType == domain::ChartType::TransitToNatal)
+      ? ("Transit-to-natal chart for " + subjectLabel)
+      : ("Natal chart for " + subjectLabel);
   statusMessage_ = "Chart computed (" + std::to_string(m_chart->planets.size()) +
                    " planets, " + std::to_string(m_chart->aspects.size()) + " aspects)";
 
   // Push chart to AI panel if connected.
   if (m_aiPanel) {
-    m_aiPanel->setChart(*m_chart, req.chartType);
+    m_aiPanel->setChart(*m_chart, req.chartType, m_lastComputedAiSourceLabel_);
   }
 
   // Generate interpretation
@@ -879,6 +887,14 @@ void ChartWorkspacePanel::draw() {
     }
   }
   if (!canCopy) ImGui::EndDisabled();
+  ImGui::SameLine();
+
+  const bool canAskAi = m_chart.has_value() && m_aiPanel != nullptr;
+  if (!canAskAi) ImGui::BeginDisabled();
+  if (ImGui::Button("AI")) {
+    m_aiPanel->requestInterpretation(*m_chart, m_lastComputedAiChartType_, m_lastComputedAiSourceLabel_);
+  }
+  if (!canAskAi) ImGui::EndDisabled();
   ImGui::SameLine();
 
   bool canExport = m_hasScene;

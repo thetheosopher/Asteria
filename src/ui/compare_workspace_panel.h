@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <cstdint>
+#include "domain/types.h"
 #include "domain/person.h"
 #include "domain/computed_chart.h"
 #include "render/chart_scene.h"
@@ -44,6 +45,8 @@ class CompareWorkspacePanel {
   std::optional<domain::ComputedChart> m_chartA;
   std::optional<domain::ComputedChart> m_chartB;
   std::optional<domain::ComputedChart> m_compChart;
+  domain::ChartType m_lastComputedAiChartType_ = domain::ChartType::Synastry;
+  std::string m_lastComputedAiSourceLabel_;
   bool m_hasResult = false;
   AiInterpretationPanel* m_aiPanel = nullptr;
 };

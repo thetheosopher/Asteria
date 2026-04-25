@@ -5,11 +5,40 @@
 #include "util/ollama_client.h"
 #include "imgui.h"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <vector>
 
 namespace asteria::ui {
+
+namespace {
+
+std::string defaultAnalysisLabel(domain::ChartType type) {
+  switch (type) {
+    case domain::ChartType::Natal:
+      return "Natal chart";
+    case domain::ChartType::Synastry:
+      return "Synastry chart";
+    case domain::ChartType::Composite:
+      return "Composite chart";
+    case domain::ChartType::TransitToNatal:
+      return "Transit-to-natal chart";
+  }
+  return "Chart";
+}
+
+std::string buildInterpretationFileName(const std::string& analysisLabel,
+                                        const std::string& model) {
+  std::string baseName = analysisLabel.empty() ? std::string("Chart") : analysisLabel;
+  if (!model.empty()) {
+    baseName += " - " + model;
+  }
+  baseName += " - AI Interpretation";
+  return sanitizeFileName(baseName) + ".md";
+}
+
+}  // namespace
 
 AiInterpretationPanel::AiInterpretationPanel(AppContext& ctx) : m_ctx(ctx) {}
 
@@ -18,9 +47,60 @@ AiInterpretationPanel::~AiInterpretationPanel() {
 }
 
 void AiInterpretationPanel::setChart(const domain::ComputedChart& chart,
-                                     domain::ChartType type) {
+                                     domain::ChartType type,
+                                     std::string sourceLabel) {
+  if (sourceLabel.empty()) {
+    sourceLabel = defaultAnalysisLabel(type);
+  }
+
+  const bool contextChanged = !m_chart.has_value()
+      || m_chart->computedChartId != chart.computedChartId
+      || m_chartType != type
+      || m_sourceLabel != sourceLabel;
+
+  if (contextChanged) {
+    clearOutputState();
+  }
+
   m_chart = chart;
   m_chartType = type;
+  m_sourceLabel = std::move(sourceLabel);
+}
+
+void AiInterpretationPanel::requestInterpretation(const domain::ComputedChart& chart,
+                                                  domain::ChartType type,
+                                                  std::string sourceLabel) {
+  setChart(chart, type, std::move(sourceLabel));
+  open = true;
+  m_focusOnNextDraw = true;
+
+  const bool ollamaEnabled = m_ctx.getSetting("ollama_enabled", "0") == "1";
+  const std::string model = m_ctx.getSetting("ollama_model", "");
+  if (ollamaEnabled && !model.empty()) {
+    startGeneration();
+  }
+}
+
+void AiInterpretationPanel::clearOutputState() {
+  stopGeneration();
+
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_streamedText.clear();
+    m_errorText.clear();
+  }
+
+  m_displayText.clear();
+  m_displayError.clear();
+  m_statusText.clear();
+  m_statusIsError = false;
+}
+
+std::string AiInterpretationPanel::currentAnalysisLabel() const {
+  if (!m_sourceLabel.empty()) {
+    return m_sourceLabel;
+  }
+  return defaultAnalysisLabel(m_chartType);
 }
 
 // ---------------------------------------------------------------------------
@@ -33,9 +113,19 @@ void AiInterpretationPanel::draw() {
   bool ollamaEnabled = m_ctx.getSetting("ollama_enabled", "0") == "1";
 
   ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);
+  if (m_focusOnNextDraw) {
+    ImGui::SetNextWindowFocus();
+  }
   if (!ImGui::Begin("AI Interpretation", &open)) { ImGui::End(); return; }
+  m_focusOnNextDraw = false;
+
+  const std::string analysisLabel = currentAnalysisLabel();
+  if (!analysisLabel.empty()) {
+    ImGui::TextWrapped("Analyzing: %s", analysisLabel.c_str());
+  }
 
   if (!ollamaEnabled) {
+    ImGui::Separator();
     ImGui::TextWrapped("Ollama integration is disabled. Enable it in Settings and "
                        "select a model to use AI-generated interpretations.");
     ImGui::End();
@@ -44,6 +134,7 @@ void AiInterpretationPanel::draw() {
 
   std::string model = m_ctx.getSetting("ollama_model", "");
   if (model.empty()) {
+    ImGui::Separator();
     ImGui::TextWrapped("No Ollama model selected. Open Settings and choose a model "
                        "from the Ollama Model dropdown.");
     ImGui::End();
@@ -59,9 +150,20 @@ void AiInterpretationPanel::draw() {
   ImGui::Separator();
 
   // Optional focus question.
+  ImGuiStyle& style = ImGui::GetStyle();
+  const float panelContentWidth = ImGui::GetContentRegionAvail().x;
+  const float labelWidth = ImGui::CalcTextSize("Focus (optional):").x;
+  const float generateButtonWidth = ImGui::CalcTextSize("Generate").x + style.FramePadding.x * 2.0f;
+  const float stopButtonWidth = ImGui::CalcTextSize("Stop").x + style.FramePadding.x * 2.0f;
+  const float saveButtonWidth = ImGui::CalcTextSize("Save...").x + style.FramePadding.x * 2.0f;
+  const float primaryButtonWidth = (std::max)(generateButtonWidth, stopButtonWidth);
+  const float reservedButtonWidth = primaryButtonWidth + saveButtonWidth + style.ItemSpacing.x * 2.0f;
+  const float availableFocusWidth = panelContentWidth - labelWidth - reservedButtonWidth - style.ItemSpacing.x;
+  const float focusWidth = (std::max)(1.0f, (std::min)(panelContentWidth * 0.5f, availableFocusWidth));
+
   ImGui::Text("Focus (optional):");
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(-120.0f);
+  ImGui::SetNextItemWidth(focusWidth);
   ImGui::InputText("##AiFocus", m_focusBuf, sizeof(m_focusBuf));
 
   ImGui::SameLine();
@@ -125,8 +227,9 @@ void AiInterpretationPanel::draw() {
       ImGui::SetScrollHereY(1.0f);
     }
   } else if (!generating) {
-    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-        "Click \"Generate\" to request an AI interpretation of the current chart.");
+    const std::string placeholder = "Click \"Generate\" to request an AI interpretation of "
+        + currentAnalysisLabel() + ".";
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", placeholder.c_str());
   }
 
   ImGui::EndChild();
@@ -179,9 +282,12 @@ void AiInterpretationPanel::stopGeneration() {
 void AiInterpretationPanel::saveInterpretation() {
   if (m_displayText.empty()) return;
 
+  const std::string model = m_ctx.getSetting("ollama_model", "");
+  const std::string defaultFileName = buildInterpretationFileName(currentAnalysisLabel(), model);
+
   auto path = showSaveFileDialog(
       L"Save AI Interpretation",
-      "ai_interpretation.md",
+      defaultFileName,
       L"Markdown Files (*.md)\0*.md\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0\0",
       L"md");
   if (!path) {
@@ -233,6 +339,10 @@ std::string AiInterpretationPanel::buildPrompt() const {
       ss << "This is a **transit-to-natal chart** interpretation. Analyze "
             "how current planetary transits affect the natal chart.\n\n";
       break;
+  }
+
+  if (!m_sourceLabel.empty()) {
+    ss << "**Analysis target:** " << m_sourceLabel << "\n\n";
   }
 
   // Uncertainty warnings.

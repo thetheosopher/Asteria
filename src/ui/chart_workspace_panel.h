@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <cstdint>
+#include "domain/types.h"
 #include "render/chart_scene.h"
 #include "render/theme_presets.h"
 #include "domain/person.h"
@@ -52,6 +53,8 @@ class ChartWorkspacePanel {
   std::optional<domain::BirthEvent> m_birthEvent;
   std::optional<domain::LocationResolution> m_location;
   std::optional<domain::ComputedChart> m_chart;
+  domain::ChartType m_lastComputedAiChartType_ = domain::ChartType::Natal;
+  std::string m_lastComputedAiSourceLabel_;
   render::ChartScene m_scene;
   bool m_hasScene = false;
   bool m_focusOnNextDraw = false;

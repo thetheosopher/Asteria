@@ -227,9 +227,7 @@ void applyDefaultDockLayout(ImGuiID dockspaceId,
   ImGui::DockBuilderDockWindow("Library", leftDockId);
   ImGui::DockBuilderDockWindow("Chart Workspace", rightDockId);
   ImGui::DockBuilderDockWindow("Compare Workspace", rightDockId);
-  if (showAiInterpretation) {
-    ImGui::DockBuilderDockWindow("AI Interpretation", rightDockId);
-  }
+  ImGui::DockBuilderDockWindow("AI Interpretation", rightDockId);
 
   ImGui::DockBuilderFinish(dockspaceId);
 }
@@ -354,9 +352,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
             ImGui::MenuItem("Library",   nullptr, &libraryPanel.open);
             ImGui::MenuItem("Chart",     nullptr, &chartPanel.open);
             ImGui::MenuItem("Compare",   nullptr, &comparePanel.open);
-            if (settingsPanel.isOllamaEnabled()) {
-              ImGui::MenuItem("AI Interpretation", nullptr, &aiPanel.open);
-            }
+            ImGui::MenuItem("AI Interpretation", nullptr, &aiPanel.open);
             ImGui::EndMenu();
           }
 

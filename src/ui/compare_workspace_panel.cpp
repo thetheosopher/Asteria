@@ -113,6 +113,8 @@ void CompareWorkspacePanel::computeComparison() {
 
   const auto& beA = eventsA.front();
   const auto& beB = eventsB.front();
+  const std::string nameA = m_people[personA_].fullName;
+  const std::string nameB = m_people[personB_].fullName;
   std::optional<domain::LocationResolution> locA, locB;
   if (beA.locationId) locA = m_ctx.locationRepo.findById(*beA.locationId);
   if (beB.locationId) locB = m_ctx.locationRepo.findById(*beB.locationId);
@@ -149,13 +151,15 @@ void CompareWorkspacePanel::computeComparison() {
     } else {
       m_chartB.reset();
     }
+    m_lastComputedAiChartType_ = domain::ChartType::Synastry;
+    m_lastComputedAiSourceLabel_ = "Synastry chart for " + nameA + " + " + nameB;
     m_compChart.reset();
     m_hasResult = true;
-    statusMessage_ = "Synastry: " + m_people[personA_].fullName + " / " +
-                     m_people[personB_].fullName + " (" +
+    statusMessage_ = "Synastry: " + nameA + " / " +
+                     nameB + " (" +
                      std::to_string(m_chartA->interAspects.size()) +
                      " inter-aspects)";
-    if (m_aiPanel) m_aiPanel->setChart(*m_chartA, domain::ChartType::Synastry);
+    if (m_aiPanel) m_aiPanel->setChart(*m_chartA, domain::ChartType::Synastry, m_lastComputedAiSourceLabel_);
   } else {
     // Composite — engine returns midpoint chart
     req.chartType = domain::ChartType::Composite;
@@ -168,10 +172,11 @@ void CompareWorkspacePanel::computeComparison() {
     m_compChart = res.value();
     m_chartA.reset();
     m_chartB.reset();
+    m_lastComputedAiChartType_ = domain::ChartType::Composite;
+    m_lastComputedAiSourceLabel_ = "Composite chart for " + nameA + " + " + nameB;
     m_hasResult = true;
-    statusMessage_ = "Composite: " + m_people[personA_].fullName + " / " +
-                     m_people[personB_].fullName;
-    if (m_aiPanel) m_aiPanel->setChart(*m_compChart, domain::ChartType::Composite);
+    statusMessage_ = "Composite: " + nameA + " / " + nameB;
+    if (m_aiPanel) m_aiPanel->setChart(*m_compChart, domain::ChartType::Composite, m_lastComputedAiSourceLabel_);
   }
 }
 
@@ -338,6 +343,19 @@ void CompareWorkspacePanel::draw() {
     refreshPeople();
     computeComparison();
   }
+  ImGui::SameLine();
+
+  const bool canAskAi = m_hasResult && m_aiPanel != nullptr
+      && ((compareMode_ == 0 && m_chartA.has_value()) || (compareMode_ == 1 && m_compChart.has_value()));
+  if (!canAskAi) ImGui::BeginDisabled();
+  if (ImGui::Button("AI")) {
+    if (compareMode_ == 0 && m_chartA) {
+      m_aiPanel->requestInterpretation(*m_chartA, m_lastComputedAiChartType_, m_lastComputedAiSourceLabel_);
+    } else if (m_compChart) {
+      m_aiPanel->requestInterpretation(*m_compChart, m_lastComputedAiChartType_, m_lastComputedAiSourceLabel_);
+    }
+  }
+  if (!canAskAi) ImGui::EndDisabled();
   ImGui::SameLine();
 
   bool canExport = m_hasResult;
