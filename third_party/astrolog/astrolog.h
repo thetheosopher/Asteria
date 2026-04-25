@@ -63,10 +63,10 @@
 ** can be disabled even if you are running a system that supports X windows.
 */
 
-//#define PC /* Comment out this #define if you have a Unix, Mac, or other */
+#define PC /* Asteria: enabled for Windows library build */
            /* system that isn't a generic PC running DOS or MS Windows.  */
 
-#define X11 /* Comment out this #define if you don't have X windows, or */
+//#define X11 /* Asteria: disabled for library build (no X11 on Windows) */
             /* else have them and don't wish to compile in X graphics.  */
 
 //#define WIN /* Comment out this #define if you don't have MS Windows, or */
@@ -106,7 +106,7 @@
 ** astrolog.as settings file, that correspond to features no longer available.
 */
 
-#define GRAPH /* Comment out this #define if you don't want any graphics   */
+//#define GRAPH /* Asteria: disabled for library build (own renderer) */
               /* in the program. This switch allows at least generation of */
               /* bitmap files and must be set if any of the more advanced  */
               /* graphics feature additions are also compiled in.          */
@@ -123,13 +123,13 @@
                /* much less accurate calculation formulas to be compiled */
                /* into the program (as accessed with -bm).               */
 
-#define PS /* Comment out this #define if you don't want the ability to */
+//#define PS /* Asteria: disabled (requires GRAPH) */
            /* generate charts in the PostScript graphics format.        */
 
-#define META /* Comment out this #define if you don't want the ability to  */
+//#define META /* Asteria: disabled (requires GRAPH) */
              /* generate charts in the MS Windows metafile picture format. */
 
-#define WIRE /* Comment out this #define if you don't want the ability to */
+//#define WIRE /* Asteria: disabled (requires GRAPH) */
              /* generate charts in the Daedalus wireframe vector format.  */
 
 #define ATLAS /* Comment out this #define if you don't want the built in  */

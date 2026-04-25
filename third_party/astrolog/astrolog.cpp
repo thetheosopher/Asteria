@@ -1177,7 +1177,7 @@ int NProcessSwitchesRare(int argc, char **argv, int pos,
       PrintSzFormat(argv[1], fTrue);
       darg++;
       break;
-    } 
+    }
 #ifdef INTRPRET
     else if (ch1 == 'I') {
       if (FErrorArgc("YYI", argc, 1))
@@ -3277,6 +3277,10 @@ void FinalizeProgram(flag fSkip)
 
 
 #ifndef WIN
+// Asteria: Guard main() to allow library embedding.
+// When compiled as a library, define ASTROLOG_NO_MAIN to exclude main().
+#ifndef ASTROLOG_NO_MAIN
+
 // The main program, the starting point for Astrolog, follows. This routine
 // basically consists of a loop, inside which we read a command line, and go
 // process it, before actually calling a routine to display astrology.
@@ -3334,5 +3338,7 @@ LBegin:
   return 0;
 }
 #endif // WIN
+
+#endif // ASTROLOG_NO_MAIN  // Asteria: end of main() guard
 
 /* astrolog.cpp */

@@ -1,0 +1,5 @@
+Asteria - Astrological Charting Application
+Copyright (c) 2025 Asteria Contributors
+
+This software is provided under the terms described below.
+See NOTICES.txt for third-party component attributions.

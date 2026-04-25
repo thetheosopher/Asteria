@@ -8,13 +8,20 @@ set(TEST_SOURCES
   unit/interpretation_test.cpp
   unit/export_test.cpp
   unit/cli_dispatcher_test.cpp
+  unit/uncertain_time_test.cpp
   integration/database_test.cpp
+  integration/astrolog_engine_test.cpp
 )
 
 add_executable(asteria_tests ${TEST_SOURCES})
 
 target_include_directories(asteria_tests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+
+# Pass source directory so tests can find Astrolog data files
+target_compile_definitions(asteria_tests PRIVATE
+  ASTERIA_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 target_link_libraries(asteria_tests PRIVATE

@@ -29,6 +29,9 @@ FetchContent_MakeAvailable(sqlite3)
 add_library(sqlite3_lib STATIC ${sqlite3_SOURCE_DIR}/sqlite3.c)
 target_include_directories(sqlite3_lib PUBLIC ${sqlite3_SOURCE_DIR})
 
+# Astrolog computation library (vendored third-party)
+add_subdirectory(third_party/astrolog)
+
 add_subdirectory(src)
 
 if (ASTERIA_BUILD_TESTS)
