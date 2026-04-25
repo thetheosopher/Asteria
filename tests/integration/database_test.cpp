@@ -32,13 +32,13 @@ class DatabaseTest : public ::testing::Test {
 
 TEST_F(DatabaseTest, MigrationRunnerCreatesSchema) {
   asteria::data::MigrationRunner runner(*db);
-  EXPECT_EQ(runner.currentVersion(), 1);
+  EXPECT_EQ(runner.currentVersion(), 2);
 }
 
 TEST_F(DatabaseTest, MigrationIsIdempotent) {
   asteria::data::MigrationRunner runner(*db);
   ASSERT_TRUE(runner.runMigrations());
-  EXPECT_EQ(runner.currentVersion(), 1);
+  EXPECT_EQ(runner.currentVersion(), 2);
 }
 
 TEST_F(DatabaseTest, PersonInsertAndFindById) {

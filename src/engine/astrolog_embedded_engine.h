@@ -1,5 +1,6 @@
 #pragma once
 #include "ichart_engine.h"
+#include "astrolog_adapter.h"
 #include <string>
 
 namespace asteria::engine {
@@ -25,6 +26,18 @@ class AstrologEmbeddedEngine final : public IChartEngine {
   /// Shared computation logic: set up adapter input from ChartRequest, call CastChart, normalize output.
   core::Result<domain::ComputedChart> computeChartInternal(
       const domain::ChartRequest& request, const std::string& method) const;
+
+  /// Normalize adapter output into a domain::ComputedChart with metadata, aspects, and uncertainty flags.
+  core::Result<domain::ComputedChart> finalizeChart(
+      const domain::ChartRequest& request,
+      const std::string& method,
+      const AstrologAdapter::ChartInput& input,
+      const AstrologAdapter::ChartOutput& adapterOutput) const;
+
+  /// Build adapter input directly from a ResolvedBirthInput (used for secondary/transit charts).
+  AstrologAdapter::ChartInput buildInput(
+      const domain::ResolvedBirthInput& src,
+      const domain::ChartRequest& request) const;
 
   /// Compute aspects from planet positions (standard orb-based detection).
   std::vector<domain::Aspect> computeAspects(

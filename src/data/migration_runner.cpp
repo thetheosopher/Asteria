@@ -122,6 +122,13 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL DEFAULT ''
 );
+)"},
+  {2, "Add coordinate columns to birth_events for direct lat/lon/tz entry",
+   R"(
+ALTER TABLE birth_events ADD COLUMN latitude_deg REAL;
+ALTER TABLE birth_events ADD COLUMN longitude_deg REAL;
+ALTER TABLE birth_events ADD COLUMN timezone_offset_hours REAL;
+ALTER TABLE birth_events ADD COLUMN dst_offset_hours REAL;
 )"}
 };
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <memory>
 #include <cstdint>
 #include "types.h"
 
@@ -22,6 +23,14 @@ struct ComputedChart {
   std::vector<PlanetPosition> planets;
   std::vector<HouseCusp> houseCusps;
   std::vector<Aspect> aspects;
+
+  /// Secondary chart for synastry/composite (if applicable).
+  /// Owned via shared_ptr to allow ComputedChart to remain copyable while
+  /// keeping a self-referential nested type.
+  std::shared_ptr<ComputedChart> secondaryChart;
+
+  /// Cross-chart aspects for synastry (planet from primary -> planet from secondary).
+  std::vector<Aspect> interAspects;
 };
 
 }  // namespace asteria::domain

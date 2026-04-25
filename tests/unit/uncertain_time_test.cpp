@@ -149,32 +149,30 @@ static asteria::domain::ComputedChart makeChartWithFlags(
 
   // Add some planet positions for a valid chart
   asteria::domain::PlanetPosition sun;
-  sun.objectName = "Sun";
-  sun.longitude = 280.0;
-  sun.latitude = 0.0;
+  sun.objectId = "Sun";
+  sun.longitudeDegrees = 280.0;
+  sun.latitudeDegrees = 0.0;
   sun.speed = 1.0;
-  sun.signName = "Capricorn";
-  sun.signIndex = 10;
-  sun.houseNumber = 1;
-  sun.isRetrograde = false;
+  sun.sign = "Capricorn";
+  sun.house = 1;
+  sun.retrograde = false;
   chart.planets.push_back(sun);
 
   asteria::domain::PlanetPosition moon;
-  moon.objectName = "Moon";
-  moon.longitude = 120.0;
-  moon.latitude = 2.0;
+  moon.objectId = "Moon";
+  moon.longitudeDegrees = 120.0;
+  moon.latitudeDegrees = 2.0;
   moon.speed = 13.0;
-  moon.signName = "Leo";
-  moon.signIndex = 5;
-  moon.houseNumber = 7;
-  moon.isRetrograde = false;
+  moon.sign = "Leo";
+  moon.house = 7;
+  moon.retrograde = false;
   chart.planets.push_back(moon);
 
   if (withHouses) {
     for (int i = 1; i <= 12; ++i) {
       asteria::domain::HouseCusp cusp;
       cusp.houseNumber = i;
-      cusp.longitude = (i - 1) * 30.0;
+      cusp.longitudeDegrees = (i - 1) * 30.0;
       chart.houseCusps.push_back(cusp);
     }
   }
@@ -354,7 +352,7 @@ TEST(UncertainTimeTest, InterpretationCompositeWithUncertainty) {
 TEST(UncertainTimeTest, InterpretationTransitWithUncertainty) {
   auto chart = makeChartWithFlags({"approximate_time"});
   asteria::core::InterpretationService svc;
-  auto result = svc.generateBuiltIn(chart, asteria::domain::ChartType::Transit);
+  auto result = svc.generateBuiltIn(chart, asteria::domain::ChartType::TransitToNatal);
   ASSERT_TRUE(result.ok());
   EXPECT_TRUE(result.value().certaintyGuardrailsApplied);
 }

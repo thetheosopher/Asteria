@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ASTERIA_BUILD_TESTS "Build tests" ON)
-option(ASTERIA_ENABLE_QT_UI "Enable Qt UI integration (future)" OFF)
 
 if (MSVC)
   add_compile_options(/W4 /permissive-)
@@ -17,6 +16,35 @@ else()
 endif()
 
 include(FetchContent)
+
+# Dear ImGui (docking branch) for the desktop UI
+FetchContent_Declare(
+  imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG docking
+  GIT_SHALLOW TRUE
+  TLS_VERIFY OFF
+)
+FetchContent_MakeAvailable(imgui)
+
+# Build ImGui as a static library with Win32+DX11 backend
+add_library(imgui_lib STATIC
+  ${imgui_SOURCE_DIR}/imgui.cpp
+  ${imgui_SOURCE_DIR}/imgui_demo.cpp
+  ${imgui_SOURCE_DIR}/imgui_draw.cpp
+  ${imgui_SOURCE_DIR}/imgui_tables.cpp
+  ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
+  ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
+)
+target_include_directories(imgui_lib PUBLIC
+  ${imgui_SOURCE_DIR}
+  ${imgui_SOURCE_DIR}/backends
+)
+target_link_libraries(imgui_lib PUBLIC d3d11 dxgi d3dcompiler)
+if (MSVC)
+  target_compile_options(imgui_lib PRIVATE /W0)
+endif()
 
 # SQLite3 via amalgamation
 FetchContent_Declare(

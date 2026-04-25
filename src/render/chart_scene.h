@@ -18,6 +18,8 @@ struct CircleElement {
   Color stroke;
   double strokeWidth = 1.0;
   std::string fill = "none";
+  std::string layer;       // optional: SVG group name for archival/automation
+  std::string id;          // optional: stable element id
 };
 
 struct LineElement {
@@ -27,6 +29,8 @@ struct LineElement {
   double y2 = 0.0;
   Color stroke;
   double strokeWidth = 1.0;
+  std::string layer;
+  std::string id;
 };
 
 struct TextElement {
@@ -36,6 +40,8 @@ struct TextElement {
   int fontSize = 12;
   std::string anchor = "middle";
   Color fill;
+  std::string layer;
+  std::string id;
 };
 
 struct ChartScene {
@@ -44,6 +50,12 @@ struct ChartScene {
   std::vector<CircleElement> circles;
   std::vector<LineElement> lines;
   std::vector<TextElement> texts;
+
+  /// Optional metadata embedded as an SVG comment for archival/automation.
+  std::string canonicalHash;
+  std::string engineMethod;
+  std::string houseSystem;
+  std::string zodiacMode;
 };
 
 }  // namespace asteria::render

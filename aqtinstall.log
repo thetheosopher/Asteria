@@ -1,0 +1,244 @@
+2026-04-25 07:01:13,232 - aqt.metadata - DEBUG - metadata 44952 Connection to 'https://download.qt.io' failed. Retrying with fallback 'https://mirrors.ustc.edu.cn/qtproject/'.
+2026-04-25 07:01:16,994 - aqt.main - ERROR - installer 44952 Failed to retrieve file at https://mirrors.ustc.edu.cn/qtproject/online/qtsdkrepository/windows_x86/desktop/
+Server response code: 403, reason: Forbidden
+2026-04-25 07:01:48,049 - aqt.main - INFO - installer 58620 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+2026-04-25 07:01:48,049 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:01:54,688 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:01,122 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:07,571 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:13,933 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:20,338 - aqt.archives - WARNING - archives 58620 Failed to download checksum for the file 'online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml'. This may happen on unofficial mirrors.
+2026-04-25 07:02:26,664 - aqt.helper - WARNING - helper 58620 Connection to 'https://download.qt.io' failed. Retrying with fallback 'https://master.qt.io/'.
+2026-04-25 07:02:26,665 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:33,048 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:39,444 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:46,078 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:52,523 - aqt.helper - DEBUG - helper 58620 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:02:58,918 - aqt.archives - WARNING - archives 58620 Failed to download checksum for the file 'online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml'. This may happen on unofficial mirrors.
+2026-04-25 07:03:05,359 - aqt.main - ERROR - installer 58620 Failure to connect to https://master.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml: SSLError
+2026-04-25 07:03:58,698 - aqt.main - INFO - installer 62540 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+2026-04-25 07:03:58,699 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:05,164 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:11,607 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:17,979 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:24,400 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:30,845 - aqt.archives - WARNING - archives 62540 Failed to download checksum for the file 'online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml'. This may happen on unofficial mirrors.
+2026-04-25 07:04:37,276 - aqt.helper - WARNING - helper 62540 Connection to 'https://download.qt.io' failed. Retrying with fallback 'https://ftp.yz.yamagata-u.ac.jp/pub/qtproject/'.
+2026-04-25 07:04:37,277 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:43,670 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:50,354 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:04:59,670 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:05:06,046 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml.sha256
+2026-04-25 07:05:12,434 - aqt.archives - WARNING - archives 62540 Failed to download checksum for the file 'online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml'. This may happen on unofficial mirrors.
+2026-04-25 07:05:15,222 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtwebengine/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:05:21,577 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtwebengine/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:05:30,901 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtwebengine/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:05:37,249 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtwebengine/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:05:43,603 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtwebengine/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:05:50,065 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtpdf/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:05:56,456 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtpdf/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:06:02,829 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtpdf/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:06:09,284 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtpdf/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:06:21,584 - aqt.helper - DEBUG - helper 62540 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtpdf/682/msvc2022_64/Updates.xml.sha256
+2026-04-25 07:06:28,951 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:28,960 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:28,965 - aqt.helper - DEBUG - helper 52344 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:28,984 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:36,740 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:36,748 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:36,755 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:36,761 - aqt.helper - DEBUG - helper 52344 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:44,518 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:44,521 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:44,538 - aqt.helper - DEBUG - helper 52344 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:44,550 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:52,342 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:52,485 - aqt.helper - DEBUG - helper 52344 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:52,489 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:52,518 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:58,850 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:59,723 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:59,806 - aqt.helper - DEBUG - helper 52344 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:06:59,840 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:07:05,513 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:07:06,722 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838d3dcompiler_47-x64.7z.sha256
+2026-04-25 07:07:06,971 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838opengl32sw-64-mesa_11_2_2-signed_sha256.7z.sha256
+2026-04-25 07:07:12,171 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:07:13,216 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838d3dcompiler_47-x64.7z.sha256
+2026-04-25 07:07:13,469 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838opengl32sw-64-mesa_11_2_2-signed_sha256.7z.sha256
+2026-04-25 07:07:18,721 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:07:19,737 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838d3dcompiler_47-x64.7z.sha256
+2026-04-25 07:07:20,015 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838opengl32sw-64-mesa_11_2_2-signed_sha256.7z.sha256
+2026-04-25 07:07:25,398 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:07:26,453 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838d3dcompiler_47-x64.7z.sha256
+2026-04-25 07:07:26,627 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838opengl32sw-64-mesa_11_2_2-signed_sha256.7z.sha256
+2026-04-25 07:07:32,019 - aqt.helper - DEBUG - helper 66828 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-04-25 07:07:33,233 - aqt.helper - DEBUG - helper 49668 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838opengl32sw-64-mesa_11_2_2-signed_sha256.7z.sha256
+2026-04-25 07:07:35,281 - aqt.helper - DEBUG - helper 59660 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/qt.qt6.682.win64_msvc2022_64/6.8.2-0-202501260838d3dcompiler_47-x64.7z.sha256
+2026-04-25 07:07:41,817 - aqt.installer - WARNING - installer 62540 Caught ChecksumDownloadFailure, terminating installer workers
+2026-04-25 07:07:41,848 - aqt.main - ERROR - installer 62540 Failed to download checksum for the file '6.8.2-0-202501260838qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z' from mirrors '['https://download.qt.io']
+==============================Suggested follow-up:==============================
+* Check your internet connection
+* Consider modifying `requests.max_retries_to_retrieve_hash` in settings.ini
+* Consider modifying `mirrors.trusted_mirrors` in settings.ini (see https://aqtinstall.readthedocs.io/en/stable/configuration.html#configuration)
+2026-04-25 07:07:58,588 - aqt.main - INFO - installer 33728 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+2026-04-25 07:07:58,589 - aqt.main - ERROR - installer 33728 Cannot choose from an empty sequence
+Traceback (most recent call last):
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 203, in run
+    args.func(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 455, in run_install_qt
+    qt_archives: QtArchives = retry_on_bad_connection(
+                              ~~~~~~~~~~~~~~~~~~~~~~~^
+        lambda base_url: QtArchives(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+        base,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\helper.py", line 302, in retry_on_bad_connection
+    fallback_url = secrets.choice(Settings.fallbacks)
+  File "C:\Python314\Lib\random.py", line 353, in choice
+    raise IndexError('Cannot choose from an empty sequence')
+IndexError: Cannot choose from an empty sequence
+2026-04-25 07:07:58,681 - aqt.main - ERROR - installer 33728 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+Working dir: `C:\Projects\other\Asteria`
+Arguments: `['-c']` Host: `uname_result(system='Windows', node='AG-5CG34638Q5', release='11', version='10.0.26100', machine='AMD64')`
+===========================PLEASE FILE A BUG REPORT===========================
+You have discovered a bug in aqt.
+Please file a bug report at https://github.com/miurahr/aqtinstall/issues
+Please remember to include a copy of this program's output in your report.
+2026-04-25 07:08:17,224 - aqt.main - INFO - installer 55004 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+2026-04-25 07:08:17,225 - aqt.main - ERROR - installer 55004 Cannot choose from an empty sequence
+Traceback (most recent call last):
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 203, in run
+    args.func(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 455, in run_install_qt
+    qt_archives: QtArchives = retry_on_bad_connection(
+                              ~~~~~~~~~~~~~~~~~~~~~~~^
+        lambda base_url: QtArchives(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+        base,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\helper.py", line 302, in retry_on_bad_connection
+    fallback_url = secrets.choice(Settings.fallbacks)
+  File "C:\Python314\Lib\random.py", line 353, in choice
+    raise IndexError('Cannot choose from an empty sequence')
+IndexError: Cannot choose from an empty sequence
+2026-04-25 07:08:17,318 - aqt.main - ERROR - installer 55004 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+Working dir: `C:\Projects\other\Asteria`
+Arguments: `['-c']` Host: `uname_result(system='Windows', node='AG-5CG34638Q5', release='11', version='10.0.26100', machine='AMD64')`
+===========================PLEASE FILE A BUG REPORT===========================
+You have discovered a bug in aqt.
+Please file a bug report at https://github.com/miurahr/aqtinstall/issues
+Please remember to include a copy of this program's output in your report.
+2026-04-25 07:08:34,714 - aqt.main - INFO - installer 50960 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+2026-04-25 07:08:34,714 - aqt.main - ERROR - installer 50960 Cannot choose from an empty sequence
+Traceback (most recent call last):
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 203, in run
+    args.func(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 455, in run_install_qt
+    qt_archives: QtArchives = retry_on_bad_connection(
+                              ~~~~~~~~~~~~~~~~~~~~~~~^
+        lambda base_url: QtArchives(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+        base,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\helper.py", line 302, in retry_on_bad_connection
+    fallback_url = secrets.choice(Settings.fallbacks)
+  File "C:\Python314\Lib\random.py", line 353, in choice
+    raise IndexError('Cannot choose from an empty sequence')
+IndexError: Cannot choose from an empty sequence
+2026-04-25 07:08:34,787 - aqt.main - ERROR - installer 50960 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+Working dir: `C:\Projects\other\Asteria`
+Arguments: `['C:\\Projects\\other\\Asteria\\tools\\install_qt.py']` Host: `uname_result(system='Windows', node='AG-5CG34638Q5', release='11', version='10.0.26100', machine='AMD64')`
+===========================PLEASE FILE A BUG REPORT===========================
+You have discovered a bug in aqt.
+Please file a bug report at https://github.com/miurahr/aqtinstall/issues
+Please remember to include a copy of this program's output in your report.
+2026-04-25 07:08:51,764 - aqt.main - INFO - installer 55288 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+2026-04-25 07:08:51,766 - aqt.archives - WARNING - archives 55288 Failed to download checksum for the file 'online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml'. This may happen on unofficial mirrors.
+2026-04-25 07:08:53,345 - aqt.main - INFO - installer 20692 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+2026-04-25 07:08:53,345 - aqt.archives - WARNING - archives 20692 Failed to download checksum for the file 'online/qtsdkrepository/windows_x86/desktop/qt6_682/qt6_682/Updates.xml'. This may happen on unofficial mirrors.
+2026-04-25 07:08:54,212 - aqt.main - ERROR - installer 20692 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+            if __name__ == '__main__':
+                freeze_support()
+                ...
+
+        The "freeze_support()" line can be omitted if the program
+        is not going to be frozen to produce an executable.
+
+        To fix this issue, refer to the "Safe importing of main module"
+        section in https://docs.python.org/3/library/multiprocessing.html
+        
+Traceback (most recent call last):
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 203, in run
+    args.func(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 476, in run_install_qt
+    run_installer(qt_archives.get_packages(), base_dir, sevenzip, keep, _archive_dest, dry_run=dry_run)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ccloskey\AppData\Roaming\Python\Python314\site-packages\aqt\installer.py", line 1557, in run_installer
+    queue = multiprocessing.Manager().Queue(-1)
+            ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\multiprocessing\context.py", line 57, in Manager
+    m.start()
+    ~~~~~~~^^
+  File "C:\Python314\Lib\multiprocessing\managers.py", line 566, in start
+    self._process.start()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\multiprocessing\process.py", line 121, in start
+    self._popen = self._Popen(self)
+                  ~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\multiprocessing\context.py", line 337, in _Popen
+    return Popen(process_obj)
+  File "C:\Python314\Lib\multiprocessing\popen_spawn_win32.py", line 47, in __init__
+    prep_data = spawn.get_preparation_data(process_obj._name)
+  File "C:\Python314\Lib\multiprocessing\spawn.py", line 164, in get_preparation_data
+    _check_not_importing_main()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\multiprocessing\spawn.py", line 140, in _check_not_importing_main
+    raise RuntimeError('''
+    ...<16 lines>...
+    ''')
+RuntimeError: 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+            if __name__ == '__main__':
+                freeze_support()
+                ...
+
+        The "freeze_support()" line can be omitted if the program
+        is not going to be frozen to produce an executable.
+
+        To fix this issue, refer to the "Safe importing of main module"
+        section in https://docs.python.org/3/library/multiprocessing.html
+        
+2026-04-25 07:08:54,302 - aqt.main - ERROR - installer 20692 aqtinstall(aqt) v3.3.0 on Python 3.14.2 [CPython MSC v.1944 64 bit (AMD64)]
+Working dir: `C:\Projects\other\Asteria`
+Arguments: `['C:\\Projects\\other\\Asteria\\tools\\install_qt.py']` Host: `uname_result(system='Windows', node='AG-5CG34638Q5', release='11', version='10.0.26100', machine='AMD64')`
+===========================PLEASE FILE A BUG REPORT===========================
+You have discovered a bug in aqt.
+Please file a bug report at https://github.com/miurahr/aqtinstall/issues
+Please remember to include a copy of this program's output in your report.

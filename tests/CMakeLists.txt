@@ -9,6 +9,8 @@ set(TEST_SOURCES
   unit/export_test.cpp
   unit/cli_dispatcher_test.cpp
   unit/uncertain_time_test.cpp
+  unit/birth_event_resolver_test.cpp
+  unit/svg_determinism_test.cpp
   integration/database_test.cpp
   integration/astrolog_engine_test.cpp
 )

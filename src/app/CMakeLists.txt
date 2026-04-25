@@ -9,4 +9,5 @@ target_link_libraries(asteria_app PRIVATE
   asteria_engine
   asteria_render
   asteria_data
+  asteria_ui
 )
