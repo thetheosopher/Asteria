@@ -1,0 +1,49 @@
+# Build outputs
+/build/
+/out/
+/bin/
+/obj/
+*.obj
+*.pdb
+*.ilk
+*.tlog
+*.idb
+*.exe
+*.dll
+*.lib
+*.exp
+*.ilk
+*.manifest
+
+# CMake / Ninja
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+.ninja_deps
+.ninja_log
+build.ninja
+Testing/
+_deps/
+
+# VSCode / IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.vs/
+*.VC.db
+
+# Local app data
+/data/
+*.db
+*.sqlite
+*.sqlite3
+/exports/
+/cache/
+*.svg
+*.png
+
+# OS noise
+.DS_Store
+Thumbs.db

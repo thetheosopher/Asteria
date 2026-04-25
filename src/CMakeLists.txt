@@ -1,0 +1,7 @@
+add_subdirectory(domain)
+add_subdirectory(engine)
+add_subdirectory(render)
+add_subdirectory(core)
+add_subdirectory(data)
+add_subdirectory(automation)
+add_subdirectory(app)

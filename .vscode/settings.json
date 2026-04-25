@@ -1,0 +1,22 @@
+{
+  "cmake.configureOnOpen": false,
+  "cmake.configureOnEdit": false,
+  "cmake.automaticReconfigure": false,
+  "cmake.showNotAllDocumentsSavedQuestion": false,
+  "cmake.buildBeforeRun": false,
+  "cmake.configureSettings": {
+    "ASTERIA_BUILD_TESTS": "ON",
+    "ASTERIA_ENABLE_QT_UI": "OFF"
+  },
+  "cmake.buildDirectory": "${workspaceFolder}/build/default",
+  "cmake.environment": {
+    "GIT_SSL_NO_VERIFY": "true",
+    "CMAKE_TLS_VERIFY": "0"
+  },
+  "files.associations": {
+    "optional": "cpp",
+    "string": "cpp",
+    "variant": "cpp",
+    "vector": "cpp"
+  }
+}
