@@ -287,12 +287,11 @@ std::string buildMarkdown(const TransitReportService::Report& report) {
     out << "- " << event.timestamp << ' ' << report.timezoneLabel << ": "
         << event.transitObject << ' ' << event.aspectType
         << " natal " << event.natalObject
-        << " (orb " << std::fixed << std::setprecision(2) << event.orbDegrees << " deg";
+        ;
     if (event.retrograde) {
-      out << ", Rx";
+      out << " (Rx)";
     }
-    out << ")\n";
-    out.unsetf(std::ios::floatfield);
+    out << "\n";
   }
 
   return out.str();

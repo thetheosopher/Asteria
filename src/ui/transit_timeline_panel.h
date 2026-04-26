@@ -16,6 +16,7 @@
 namespace asteria::ui {
 
 struct AppContext;
+class AiInterpretationPanel;
 
 class TransitTimelinePanel {
  public:
@@ -26,6 +27,7 @@ class TransitTimelinePanel {
 
   void draw();
   void setSelectedPerson(std::int64_t personId);
+  void setAiPanel(AiInterpretationPanel* panel) { m_aiPanel = panel; }
 
  private:
   struct TransitPlanetOption {
@@ -50,8 +52,11 @@ class TransitTimelinePanel {
   void loadRuleSettings();
   void saveRuleSettings() const;
   void startGeneration();
+  void requestAiInsights();
   void saveMarkdown();
   void syncWorkerState();
+  std::string buildAiPrompt() const;
+  std::string currentAiAnalysisLabel() const;
 
   AppContext& m_ctx;
 
@@ -76,6 +81,7 @@ class TransitTimelinePanel {
   std::string m_displayMarkdown;
   std::string m_statusText;
   bool m_statusIsError = false;
+  AiInterpretationPanel* m_aiPanel = nullptr;
 };
 
 }  // namespace asteria::ui

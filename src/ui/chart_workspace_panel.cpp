@@ -28,6 +28,13 @@ namespace asteria::ui {
 
 namespace {
 
+void leftLabel(const char* text, float width = 92.0f) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(text);
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(width);
+}
+
 ImVec2 polarPoint(float cx, float cy, float radius, float angle) {
   return ImVec2(cx + radius * cosf(angle), cy + radius * sinf(angle));
 }
@@ -438,7 +445,11 @@ void ChartWorkspacePanel::computeChart() {
   }
 
   m_chart = result.value();
-  m_scene = render::buildNatalChartScene(*m_chart, currentThemePreset());
+  if (req.chartType == domain::ChartType::TransitToNatal && m_chart->secondaryChart) {
+    m_scene = render::buildTransitToNatalChartScene(*m_chart, *m_chart->secondaryChart, currentThemePreset());
+  } else {
+    m_scene = render::buildNatalChartScene(*m_chart, currentThemePreset());
+  }
   m_hasScene = true;
   const std::string subjectLabel = m_person
       ? (m_person->displayName.empty() ? m_person->fullName : m_person->displayName)
@@ -676,10 +687,14 @@ void ChartWorkspacePanel::drawInfoSidePanel() {
   ImGui::PopStyleColor();
 
   ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(headingCol));
-  ImGui::TextUnformatted("Natal Chart Notes");
+  ImGui::TextUnformatted(currentChartType_ == 0 ? "Natal Chart Notes" : "Transit-to-Natal Notes");
   ImGui::PopStyleColor();
   ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(mutedCol));
-  ImGui::TextWrapped("Person, birthplace, chart settings, and object positions in a compact reference panel.");
+  if (currentChartType_ == 0) {
+    ImGui::TextWrapped("Person, birthplace, chart settings, and object positions in a compact reference panel.");
+  } else {
+    ImGui::TextWrapped("Natal baseline with active transit context and inter-aspects for the current moment.");
+  }
   ImGui::PopStyleColor();
 
   drawSectionHeader("Person", accentCol, textCol);
@@ -726,10 +741,15 @@ void ChartWorkspacePanel::drawInfoSidePanel() {
 
   drawSectionHeader("Chart", accentCol, textCol);
   if (m_chart) {
+    drawInfoRow("Mode", chartTypeLabel(currentChartType_), mutedCol, textCol);
     drawInfoRow("House System", m_chart->houseSystem, mutedCol, textCol);
     drawInfoRow("Zodiac", m_chart->zodiacMode, mutedCol, textCol);
     drawInfoRow("Engine", m_chart->engineMethod.empty() ? std::string("Astrolog") : m_chart->engineMethod, mutedCol, textCol);
     drawInfoRow("Planets", std::to_string(m_chart->planets.size()), mutedCol, textCol);
+    if (m_chart->secondaryChart) {
+      drawInfoRow("Transit Planets", std::to_string(m_chart->secondaryChart->planets.size()), mutedCol, textCol);
+      drawInfoRow("Inter-Aspects", std::to_string(m_chart->interAspects.size()), mutedCol, textCol);
+    }
     drawInfoRow("Aspects", std::to_string(m_chart->aspects.size()), mutedCol, textCol);
     if (!m_chart->uncertaintyFlags.empty()) {
       drawInfoRow("Warnings", m_chart->uncertaintyFlags.front(), mutedCol, textCol);
@@ -871,8 +891,12 @@ void ChartWorkspacePanel::draw() {
 
   // Toolbar
   const char* chartTypes[] = {"Natal", "Transit-to-Natal"};
-  ImGui::SetNextItemWidth(160);
-  ImGui::Combo("Chart Type", &currentChartType_, chartTypes, IM_ARRAYSIZE(chartTypes));
+  leftLabel("Chart Type", 160.0f);
+  if (ImGui::Combo("##ChartType", &currentChartType_, chartTypes, IM_ARRAYSIZE(chartTypes))) {
+    if (m_personId > 0) {
+      computeChart();
+    }
+  }
   ImGui::SameLine();
 
   if (ImGui::Button("Compute")) {

@@ -7,6 +7,17 @@
 
 namespace asteria::ui {
 
+namespace {
+
+void leftLabel(const char* text, float width) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(text);
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(width);
+}
+
+}  // namespace
+
 SettingsPanel::SettingsPanel(AppContext& ctx) : m_ctx(ctx) {}
 
 void SettingsPanel::ensureLoaded() {
@@ -121,8 +132,8 @@ void SettingsPanel::drawViewMenuContents() {
     if (ImGui::Checkbox("Enable Ollama Integration", &ollamaEnabled_)) {
       m_ctx.setSetting("ollama_enabled", ollamaEnabled_ ? "1" : "0");
     }
-    ImGui::SetNextItemWidth(260.0f);
-    if (ImGui::InputText("Endpoint", ollamaEndpoint_, sizeof(ollamaEndpoint_))) {
+    leftLabel("Endpoint", 260.0f);
+    if (ImGui::InputText("##Endpoint", ollamaEndpoint_, sizeof(ollamaEndpoint_))) {
       m_ctx.setSetting("ollama_endpoint", ollamaEndpoint_);
     }
 

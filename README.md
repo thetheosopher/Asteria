@@ -58,7 +58,7 @@ n    - Qt UI shell
 
       The automation executable is built at `build/default/src/automation/Debug/asteria_cli.exe` and now uses the real embedded Astrolog engine for chart computation and export commands.
 
-      Every compute, export, and timeline command also accepts `--input <path>` to load the same request fields from a JSON object file. Inline flags take precedence over the JSON file, so you can keep a reusable request on disk and override just the fields you need for a one-off run.
+      Every compute, export, and timeline command also accepts `--input <path>` to load the same request fields from a JSON object file. Inline flags take precedence over the JSON file, so you can keep a reusable request on disk and override just the fields you need for a one-off run. Checked-in request samples live under `tools/examples/automation-cli/`.
 
     Example commands:
 
@@ -126,10 +126,10 @@ n    - Qt UI shell
       ```
 
       ```powershell
-      .\build\default\src\automation\Debug\asteria_cli.exe compute-natal --input .\requests\natal.json
+      .\build\default\src\automation\Debug\asteria_cli.exe compute-natal --input .\tools\examples\automation-cli\compute_natal.json
 
       .\build\default\src\automation\Debug\asteria_cli.exe compute-natal `
-         --input .\requests\natal.json `
+         --input .\tools\examples\automation-cli\compute_natal.json `
          --house-system Whole
       ```
 
@@ -157,7 +157,7 @@ n    - Qt UI shell
       ```
 
       ```powershell
-      .\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline --input .\requests\timeline.json
+      .\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline --input .\tools\examples\automation-cli\generate_transit_timeline.json
       ```
 
     ## Suggested Next Steps

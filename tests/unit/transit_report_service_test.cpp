@@ -70,7 +70,7 @@ class TransitReportTestEngine final : public asteria::engine::IChartEngine {
     asteria::domain::ComputedChart chart;
     chart.engineMethod = "TransitReportTest::Transit";
     chart.planets = {
-        {"Jupiter", 38.0 + dayOffset, 0.0, 1.0, "Taurus", std::nullopt, false},
+      {"Jupiter", 38.0 + dayOffset, 0.0, 1.0, "Taurus", std::nullopt, true},
         {"Mars", 100.4, 0.0, 0.6, "Cancer", std::nullopt, false},
     };
     return chart;
@@ -104,9 +104,12 @@ TEST(TransitReportServiceTest, GeneratesMarkdownForSlowMajorTransits) {
   EXPECT_EQ(result.value().events.front().transitObject, "Jupiter");
   EXPECT_EQ(result.value().events.front().aspectType, "Sextile");
   EXPECT_EQ(result.value().events.front().natalObject, "Sun");
+  EXPECT_TRUE(result.value().events.front().retrograde);
 
   EXPECT_NE(result.value().bodyMarkdown.find("Casey Example"), std::string::npos);
   EXPECT_NE(result.value().bodyMarkdown.find("Jupiter Sextile natal Sun"), std::string::npos);
+  EXPECT_NE(result.value().bodyMarkdown.find("(Rx)"), std::string::npos);
+  EXPECT_EQ(result.value().bodyMarkdown.find("(orb "), std::string::npos);
   EXPECT_EQ(result.value().bodyMarkdown.find("Mars Conjunction natal Sun"), std::string::npos);
   EXPECT_NE(result.value().bodyMarkdown.find("approximate_time"), std::string::npos);
 }

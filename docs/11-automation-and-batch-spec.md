@@ -33,6 +33,7 @@ Rules:
 - Inline flags override JSON file values.
 - Birth inputs are nested under `primary`, `secondary`, `transit`, or `natal` objects.
 - Birth object keys accept `datetime`, `latitude`, `longitude`, `timezone`, and `dst`.
+- Checked-in sample request files live under `tools/examples/automation-cli/`.
 
 ## Output Formats
 Prefer:
@@ -161,14 +162,14 @@ Load the same compute request from JSON instead of long inline flags:
 ```
 
 ```powershell
-.\build\default\src\automation\Debug\asteria_cli.exe compute-natal --input .\requests\natal.json
+.\build\default\src\automation\Debug\asteria_cli.exe compute-natal --input .\tools\examples\automation-cli\compute_natal.json
 ```
 
 Override one field from the JSON file on the command line:
 
 ```powershell
 .\build\default\src\automation\Debug\asteria_cli.exe compute-natal `
-	--input .\requests\natal.json `
+	--input .\tools\examples\automation-cli\compute_natal.json `
 	--house-system Whole
 ```
 
@@ -198,5 +199,5 @@ Timeline requests can carry rules and output paths directly in JSON:
 ```
 
 ```powershell
-.\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline --input .\requests\timeline.json
+.\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline --input .\tools\examples\automation-cli\generate_transit_timeline.json
 ```

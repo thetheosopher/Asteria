@@ -28,6 +28,20 @@ std::string defaultAnalysisLabel(domain::ChartType type) {
   return "Chart";
 }
 
+std::string defaultQueryTypeLabel(domain::ChartType type) {
+  switch (type) {
+    case domain::ChartType::Natal:
+      return "Natal Interpretation";
+    case domain::ChartType::Synastry:
+      return "Synastry Interpretation";
+    case domain::ChartType::Composite:
+      return "Composite Interpretation";
+    case domain::ChartType::TransitToNatal:
+      return "Transit-to-Natal Interpretation";
+  }
+  return "AI Interpretation";
+}
+
 std::string buildInterpretationFileName(const std::string& analysisLabel,
                                         const std::string& model) {
   std::string baseName = analysisLabel.empty() ? std::string("Chart") : analysisLabel;
@@ -52,11 +66,14 @@ void AiInterpretationPanel::setChart(const domain::ComputedChart& chart,
   if (sourceLabel.empty()) {
     sourceLabel = defaultAnalysisLabel(type);
   }
+  const std::string queryTypeLabel = defaultQueryTypeLabel(type);
 
   const bool contextChanged = !m_chart.has_value()
       || m_chart->computedChartId != chart.computedChartId
       || m_chartType != type
-      || m_sourceLabel != sourceLabel;
+      || m_sourceLabel != sourceLabel
+      || m_queryTypeLabel != queryTypeLabel
+      || !m_customPrompt.empty();
 
   if (contextChanged) {
     clearOutputState();
@@ -65,12 +82,46 @@ void AiInterpretationPanel::setChart(const domain::ComputedChart& chart,
   m_chart = chart;
   m_chartType = type;
   m_sourceLabel = std::move(sourceLabel);
+  m_queryTypeLabel = queryTypeLabel;
+  m_customPrompt.clear();
 }
 
 void AiInterpretationPanel::requestInterpretation(const domain::ComputedChart& chart,
                                                   domain::ChartType type,
                                                   std::string sourceLabel) {
   setChart(chart, type, std::move(sourceLabel));
+  open = true;
+  m_focusOnNextDraw = true;
+
+  const bool ollamaEnabled = m_ctx.getSetting("ollama_enabled", "0") == "1";
+  const std::string model = m_ctx.getSetting("ollama_model", "");
+  if (ollamaEnabled && !model.empty()) {
+    startGeneration();
+  }
+}
+
+void AiInterpretationPanel::requestCustomInterpretation(std::string prompt,
+                                                        std::string analysisLabel,
+                                                        std::string queryTypeLabel) {
+  if (analysisLabel.empty()) {
+    analysisLabel = "Custom AI request";
+  }
+  if (queryTypeLabel.empty()) {
+    queryTypeLabel = "Custom Interpretation";
+  }
+
+  const bool contextChanged = m_chart.has_value()
+      || m_sourceLabel != analysisLabel
+      || m_queryTypeLabel != queryTypeLabel
+      || m_customPrompt != prompt;
+  if (contextChanged) {
+    clearOutputState();
+  }
+
+  m_chart.reset();
+  m_sourceLabel = std::move(analysisLabel);
+  m_queryTypeLabel = std::move(queryTypeLabel);
+  m_customPrompt = std::move(prompt);
   open = true;
   m_focusOnNextDraw = true;
 
@@ -103,6 +154,13 @@ std::string AiInterpretationPanel::currentAnalysisLabel() const {
   return defaultAnalysisLabel(m_chartType);
 }
 
+std::string AiInterpretationPanel::currentQueryTypeLabel() const {
+  if (!m_queryTypeLabel.empty()) {
+    return m_queryTypeLabel;
+  }
+  return defaultQueryTypeLabel(m_chartType);
+}
+
 // ---------------------------------------------------------------------------
 // draw() — main UI thread
 // ---------------------------------------------------------------------------
@@ -122,6 +180,10 @@ void AiInterpretationPanel::draw() {
   const std::string analysisLabel = currentAnalysisLabel();
   if (!analysisLabel.empty()) {
     ImGui::TextWrapped("Analyzing: %s", analysisLabel.c_str());
+  }
+  const std::string queryTypeLabel = currentQueryTypeLabel();
+  if (!queryTypeLabel.empty()) {
+    ImGui::Text("Query Type: %s", queryTypeLabel.c_str());
   }
 
   if (!ollamaEnabled) {
@@ -143,9 +205,10 @@ void AiInterpretationPanel::draw() {
 
   // Status header.
   ImGui::Text("Model: %s", model.c_str());
-  if (!m_chart) {
+    const bool hasContext = m_chart.has_value() || !m_customPrompt.empty();
+    if (!hasContext) {
     ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f),
-        "No chart computed yet. Compute a chart first.");
+      "No chart or AI request available yet. Compute a chart or send a request from another panel.");
   }
   ImGui::Separator();
 
@@ -173,7 +236,7 @@ void AiInterpretationPanel::draw() {
       stopGeneration();
     }
   } else {
-    bool canGenerate = m_chart.has_value();
+    const bool canGenerate = hasContext;
     if (!canGenerate) ImGui::BeginDisabled();
     if (ImGui::Button("Generate")) {
       startGeneration();
@@ -227,8 +290,8 @@ void AiInterpretationPanel::draw() {
       ImGui::SetScrollHereY(1.0f);
     }
   } else if (!generating) {
-    const std::string placeholder = "Click \"Generate\" to request an AI interpretation of "
-        + currentAnalysisLabel() + ".";
+    const std::string placeholder = "Click \"Generate\" to request "
+        + currentQueryTypeLabel() + " for " + currentAnalysisLabel() + ".";
     ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", placeholder.c_str());
   }
 
@@ -316,6 +379,17 @@ void AiInterpretationPanel::saveInterpretation() {
 // buildPrompt() — constructs the LLM prompt from chart facts
 // ---------------------------------------------------------------------------
 std::string AiInterpretationPanel::buildPrompt() const {
+  if (!m_customPrompt.empty()) {
+    std::ostringstream custom;
+    custom << m_customPrompt;
+
+    std::string focus(m_focusBuf);
+    if (!focus.empty()) {
+      custom << "\n\n**Additional user focus:** " << focus << "\n";
+    }
+    return custom.str();
+  }
+
   std::ostringstream ss;
   ss << "You are an expert astrologer providing a detailed, insightful "
         "interpretation of an astrological chart. Use the chart data below "

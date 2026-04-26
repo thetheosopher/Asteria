@@ -35,12 +35,18 @@ class AiInterpretationPanel {
                              domain::ChartType type,
                              std::string sourceLabel = {});
 
+  /// Called by non-chart panels that want to run a custom AI query using their own prompt.
+  void requestCustomInterpretation(std::string prompt,
+                                   std::string analysisLabel,
+                                   std::string queryTypeLabel);
+
  private:
   void startGeneration();
   void stopGeneration();
   void saveInterpretation();
   void clearOutputState();
   std::string currentAnalysisLabel() const;
+  std::string currentQueryTypeLabel() const;
   std::string buildPrompt() const;
   std::string chartFactsBlock() const;
 
@@ -50,6 +56,8 @@ class AiInterpretationPanel {
   std::optional<domain::ComputedChart> m_chart;
   domain::ChartType m_chartType = domain::ChartType::Natal;
   std::string m_sourceLabel;
+  std::string m_queryTypeLabel;
+  std::string m_customPrompt;
   bool m_focusOnNextDraw = false;
 
   // User addendum field.

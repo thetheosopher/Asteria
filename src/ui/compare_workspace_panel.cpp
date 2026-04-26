@@ -23,6 +23,13 @@ namespace asteria::ui {
 
 namespace {
 
+void leftLabel(const char* text, float width) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(text);
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(width);
+}
+
 int parseSettingIndex(const AppContext& ctx, const char* key, int fallback, int maxExclusive) {
   int value = fallback;
   try { value = std::stoi(ctx.getSetting(key, std::to_string(fallback))); }
@@ -328,12 +335,12 @@ void CompareWorkspacePanel::draw() {
       auto* labels = static_cast<std::vector<std::string>*>(data);
       return (*labels)[idx].c_str();
     };
-    ImGui::SetNextItemWidth(200);
-    ImGui::Combo("Person A", &personA_, getter, &m_nameLabels,
+    leftLabel("Person A", 200.0f);
+    ImGui::Combo("##PersonA", &personA_, getter, &m_nameLabels,
                  static_cast<int>(m_nameLabels.size()));
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(200);
-    ImGui::Combo("Person B", &personB_, getter, &m_nameLabels,
+    leftLabel("Person B", 200.0f);
+    ImGui::Combo("##PersonB", &personB_, getter, &m_nameLabels,
                  static_cast<int>(m_nameLabels.size()));
   } else {
     ImGui::TextDisabled("No people in database. Add people in the Library panel.");
@@ -342,8 +349,8 @@ void CompareWorkspacePanel::draw() {
 
   // Mode switch
   const char* modes[] = {"Synastry", "Composite"};
-  ImGui::SetNextItemWidth(130);
-  ImGui::Combo("Mode", &compareMode_, modes, IM_ARRAYSIZE(modes));
+  leftLabel("Mode", 130.0f);
+  ImGui::Combo("##CompareMode", &compareMode_, modes, IM_ARRAYSIZE(modes));
   ImGui::SameLine();
 
   if (ImGui::Button("Compare")) {

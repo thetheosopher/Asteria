@@ -1,0 +1,20 @@
+{
+  "subjectName": "Casey Example",
+  "natal": {
+    "datetime": "1990-01-01T12:00",
+    "latitude": 40.0,
+    "longitude": -75.0,
+    "timezone": -5.0,
+    "dst": 0.0
+  },
+  "start": "2026-01-01T00:00",
+  "years": 5,
+  "transitPlanets": ["Jupiter", "Saturn", "Uranus"],
+  "aspects": ["Conjunction", "Square", "Opposition"],
+  "orbs": {
+    "Conjunction": 1.0,
+    "Square": 0.8,
+    "Opposition": 1.0
+  },
+  "output": ".\\build\\default\\src\\automation\\Debug\\example_transit_timeline.md"
+}

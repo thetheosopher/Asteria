@@ -301,6 +301,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
   SettingsPanel settingsPanel(ctx);
   AiInterpretationPanel aiPanel(ctx);
   chartPanel.setAiPanel(&aiPanel);
+  transitTimelinePanel.setAiPanel(&aiPanel);
   comparePanel.setAiPanel(&aiPanel);
 
   bool resetToDefaultLayout = true;

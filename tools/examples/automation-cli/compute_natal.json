@@ -1,0 +1,11 @@
+{
+  "primary": {
+    "datetime": "1990-01-01T12:00",
+    "latitude": 40.0,
+    "longitude": -75.0,
+    "timezone": -5.0,
+    "dst": 0.0
+  },
+  "houseSystem": "Placidus",
+  "zodiacMode": "Tropical"
+}

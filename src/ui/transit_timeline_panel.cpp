@@ -1,5 +1,6 @@
 #include "transit_timeline_panel.h"
 
+#include "ai_interpretation_panel.h"
 #include "app_context.h"
 #include "core/birth_event_resolver.h"
 #include "file_dialog.h"
@@ -16,6 +17,13 @@
 namespace asteria::ui {
 
 namespace {
+
+void leftLabel(const char* text, float width) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(text);
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(width);
+}
 
 std::vector<std::string> splitCsv(const std::string& value) {
   std::vector<std::string> parts;
@@ -36,19 +44,6 @@ std::string joinCsv(const std::vector<std::string>& values) {
   return out.str();
 }
 
-std::string aspectSettingSuffix(const std::string& aspectType) {
-  std::string key;
-  key.reserve(aspectType.size());
-  for (char ch : aspectType) {
-    if (ch >= 'A' && ch <= 'Z') {
-      key.push_back(static_cast<char>(ch - 'A' + 'a'));
-    } else if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
-      key.push_back(ch);
-    }
-  }
-  return key;
-}
-
 std::string defaultTransitTimelineStartDateTime() {
   std::time_t now = std::time(nullptr);
   std::tm localTime{};
@@ -65,6 +60,22 @@ std::string defaultTransitTimelineStartDateTime() {
   char buffer[32];
   if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M", &localTime) == 0) {
     return "2025-10-25T00:00";
+  }
+  return buffer;
+}
+
+std::string currentLocalDateString() {
+  std::time_t now = std::time(nullptr);
+  std::tm localTime{};
+#ifdef _WIN32
+  localtime_s(&localTime, &now);
+#else
+  localtime_r(&now, &localTime);
+#endif
+
+  char buffer[16];
+  if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d", &localTime) == 0) {
+    return "2026-04-25";
   }
   return buffer;
 }
@@ -130,16 +141,8 @@ void TransitTimelinePanel::loadRuleSettings() {
       m_ctx.getSetting("transit_timeline_aspects", joinCsv(defaultAspectNames)));
 
   for (const auto& rule : defaultAspectRules) {
-    auto currentRule = rule;
-    const std::string settingKey = "transit_timeline_orb_" + aspectSettingSuffix(rule.aspectType);
-    try {
-      currentRule.orbDegrees = std::stod(
-          m_ctx.getSetting(settingKey, std::to_string(rule.orbDegrees)));
-    } catch (...) {
-      currentRule.orbDegrees = rule.orbDegrees;
-    }
     m_aspectOptions.push_back({
-        currentRule,
+        rule,
         std::find(enabledAspectNames.begin(), enabledAspectNames.end(), rule.aspectType)
             != enabledAspectNames.end()});
   }
@@ -155,8 +158,6 @@ void TransitTimelinePanel::saveRuleSettings() const {
   std::vector<std::string> enabledAspectNames;
   for (const auto& option : m_aspectOptions) {
     if (option.enabled) enabledAspectNames.push_back(option.rule.aspectType);
-    const std::string settingKey = "transit_timeline_orb_" + aspectSettingSuffix(option.rule.aspectType);
-    m_ctx.setSetting(settingKey, std::to_string(option.rule.orbDegrees));
   }
   m_ctx.setSetting("transit_timeline_aspects", joinCsv(enabledAspectNames));
 }
@@ -316,6 +317,49 @@ void TransitTimelinePanel::saveMarkdown() {
   m_statusIsError = false;
 }
 
+std::string TransitTimelinePanel::currentAiAnalysisLabel() const {
+  if (m_person) {
+    const std::string subject = m_person->displayName.empty() ? m_person->fullName : m_person->displayName;
+    if (!subject.empty()) {
+      return subject + " transit timeline";
+    }
+  }
+  return "Transit timeline";
+}
+
+std::string TransitTimelinePanel::buildAiPrompt() const {
+  std::ostringstream prompt;
+  prompt << "You are an expert astrologer reviewing a generated transit timeline report. "
+            "Use the report below to identify the most significant transit insights that are presently in effect or coming up soon. "
+            "Format the response in Markdown with bold section headers.\n\n";
+  prompt << "**Current date:** " << currentLocalDateString() << "\n";
+  prompt << "**Analysis target:** " << currentAiAnalysisLabel() << "\n\n";
+  prompt << "Prioritize these windows:\n"
+            "- exact hits from roughly the last 45 days, since slow transits may still be active\n"
+            "- exact hits in the next 90 days\n"
+            "- slow outer-planet and Saturn/Jupiter transits over brief fast-moving effects when significance differs\n"
+            "- retrograde revisits and repeated passes when they change the interpretation\n\n";
+  prompt << "Do not summarize the entire multi-year timeline. Focus on what matters now and soon.\n\n";
+  prompt << "Please provide:\n"
+            "1. A concise summary of the most significant active influences\n"
+            "2. The most important upcoming transit shifts\n"
+            "3. Why these transits matter psychologically or practically\n"
+            "4. Short practical guidance for the near term\n\n";
+  prompt << "## Transit Timeline Report\n\n";
+  prompt << m_displayMarkdown;
+  return prompt.str();
+}
+
+void TransitTimelinePanel::requestAiInsights() {
+  if (m_aiPanel == nullptr || m_displayMarkdown.empty()) {
+    return;
+  }
+  m_aiPanel->requestCustomInterpretation(
+      buildAiPrompt(),
+      currentAiAnalysisLabel(),
+      "Transit Timeline Insights");
+}
+
 void TransitTimelinePanel::draw() {
   if (!open) return;
 
@@ -337,11 +381,11 @@ void TransitTimelinePanel::draw() {
   const auto rules = currentRules();
   const bool hasValidRules = !rules.transitObjects.empty() && !rules.aspectRules.empty();
   if (generating) ImGui::BeginDisabled();
-  ImGui::SetNextItemWidth(170.0f);
-  ImGui::InputText("Start Date", m_startDateBuf.data(), m_startDateBuf.size());
+  leftLabel("Start Date", 170.0f);
+  ImGui::InputText("##StartDate", m_startDateBuf.data(), m_startDateBuf.size());
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(100.0f);
-  ImGui::InputInt("Period (years)", &m_periodYears);
+  leftLabel("Period (years)", 100.0f);
+  ImGui::InputInt("##PeriodYears", &m_periodYears);
   m_periodYears = std::max(m_periodYears, 1);
   ImGui::SameLine();
   if (!hasValidRules) ImGui::BeginDisabled();
@@ -358,6 +402,17 @@ void TransitTimelinePanel::draw() {
     saveMarkdown();
   }
   if (!canSave) ImGui::EndDisabled();
+
+  const bool ollamaEnabled = m_ctx.getSetting("ollama_enabled", "0") == "1";
+  if (ollamaEnabled) {
+    ImGui::SameLine();
+    const bool canAskAi = !m_displayMarkdown.empty() && !generating && m_aiPanel != nullptr;
+    if (!canAskAi) ImGui::BeginDisabled();
+    if (ImGui::Button("AI")) {
+      requestAiInsights();
+    }
+    if (!canAskAi) ImGui::EndDisabled();
+  }
 
   ImGui::SameLine();
   if (generating) {
@@ -389,12 +444,12 @@ void TransitTimelinePanel::draw() {
     }
 
     ImGui::Spacing();
-    ImGui::TextUnformatted("Aspect Set and Orbs");
+    ImGui::TextUnformatted("Aspect Set");
     if (ImGui::BeginTable("TransitTimelineAspectRules", 3,
           ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
       ImGui::TableSetupColumn("Use", ImGuiTableColumnFlags_WidthFixed, 48.0f);
       ImGui::TableSetupColumn("Aspect", ImGuiTableColumnFlags_WidthStretch, 1.0f);
-      ImGui::TableSetupColumn("Orb", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+      ImGui::TableSetupColumn("Default Orb", ImGuiTableColumnFlags_WidthFixed, 110.0f);
       ImGui::TableHeadersRow();
 
       for (std::size_t i = 0; i < m_aspectOptions.size(); ++i) {
@@ -405,10 +460,7 @@ void TransitTimelinePanel::draw() {
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted(m_aspectOptions[i].rule.aspectType.c_str());
         ImGui::TableSetColumnIndex(2);
-        rulesChanged |= ImGui::InputDouble("##AspectOrb", &m_aspectOptions[i].rule.orbDegrees, 0.1, 0.5, "%.2f");
-        if (m_aspectOptions[i].rule.orbDegrees < 0.05) {
-          m_aspectOptions[i].rule.orbDegrees = 0.05;
-        }
+        ImGui::Text("%.2f deg", m_aspectOptions[i].rule.orbDegrees);
         ImGui::PopID();
       }
 
