@@ -44,6 +44,11 @@ _deps/
 *.svg
 *.png
 
+# Local library import/export assets
+/assets/Charts.json
+/assets/Charts-Converted.json
+/assets/asteria_library.json
+
 # OS noise
 .DS_Store
 Thumbs.db
