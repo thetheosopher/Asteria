@@ -19,6 +19,7 @@ class LibraryPanel {
 
   explicit LibraryPanel(AppContext& ctx);
   void draw();
+  void reloadData();
 
   /// Currently selected person ID (used by Chart/Compare panels).
   std::int64_t selectedPersonId() const { return m_selectedPersonId; }

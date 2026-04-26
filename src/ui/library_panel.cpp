@@ -71,6 +71,43 @@ LibraryPanel::LibraryPanel(AppContext& ctx) : m_ctx(ctx) {
   refreshPeople();
 }
 
+void LibraryPanel::reloadData() {
+  refreshPeople();
+
+  selectedIdx_ = -1;
+  if (m_selectedPersonId > 0) {
+    for (int index = 0; index < static_cast<int>(m_people.size()); ++index) {
+      if (m_people[index].personId == m_selectedPersonId) {
+        selectedIdx_ = index;
+        std::strncpy(nameBuf_, m_people[index].fullName.c_str(), sizeof(nameBuf_) - 1);
+        nameBuf_[sizeof(nameBuf_) - 1] = '\0';
+        std::strncpy(notesBuf_, m_people[index].notes.c_str(), sizeof(notesBuf_) - 1);
+        notesBuf_[sizeof(notesBuf_) - 1] = '\0';
+        loadBirthEvent();
+        m_dirty = false;
+        return;
+      }
+    }
+  }
+
+  m_selectedPersonId = 0;
+  nameBuf_[0] = '\0';
+  notesBuf_[0] = '\0';
+  dateBuf_[0] = '\0';
+  timeBuf_[0] = '\0';
+  cityBuf_[0] = '\0';
+  atlasSearchBuf_[0] = '\0';
+  atlasResults_.clear();
+  atlasSelectedIdx_ = -1;
+  m_currentBirthEvent = {};
+  m_hasBirthEvent = false;
+  m_dirty = false;
+  latDeg_ = 0.0;
+  lonDeg_ = 0.0;
+  tzOffsetHrs_ = 0.0;
+  dstHrs_ = 0.0;
+}
+
 void LibraryPanel::refreshPeople() {
   m_people = m_ctx.personRepo.findAll();
 }

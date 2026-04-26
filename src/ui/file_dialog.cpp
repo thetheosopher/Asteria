@@ -72,4 +72,26 @@ std::optional<std::string> showSaveFileDialog(
   return wideToUtf8(fileBuffer.data());
 }
 
+std::optional<std::string> showOpenFileDialog(
+    const std::wstring& title,
+    const wchar_t* filter) {
+  std::vector<wchar_t> fileBuffer(4096, L'\0');
+
+  OPENFILENAMEW ofn{};
+  ofn.lStructSize = sizeof(ofn);
+  ofn.hwndOwner = GetActiveWindow();
+  ofn.lpstrFile = fileBuffer.data();
+  ofn.nMaxFile = static_cast<DWORD>(fileBuffer.size());
+  ofn.lpstrFilter = filter;
+  ofn.nFilterIndex = 1;
+  ofn.lpstrTitle = title.c_str();
+  ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+  if (!GetOpenFileNameW(&ofn)) {
+    return std::nullopt;
+  }
+
+  return wideToUtf8(fileBuffer.data());
+}
+
 }  // namespace asteria::ui

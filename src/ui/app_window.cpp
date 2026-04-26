@@ -19,7 +19,9 @@
 #include "ai_interpretation_panel.h"
 #include "astrology_font.h"
 #include "about_dialog.h"
+#include "file_dialog.h"
 #include "version.h"
+#include "data/library_database_exchange.h"
 #include "util/atlas_service.h"
 #include "render/theme_presets.h"
 
@@ -152,6 +154,43 @@ ImVec4 mixColor(const ImVec4& a, const ImVec4& b, float weightToB, float alpha =
 float luminance(const ImVec4& color) {
   return color.x * 0.2126f + color.y * 0.7152f + color.z * 0.0722f;
 }
+
+std::wstring utf8ToWide(std::string_view value) {
+  if (value.empty()) return {};
+  const int size = MultiByteToWideChar(CP_UTF8, 0, value.data(), static_cast<int>(value.size()), nullptr, 0);
+  if (size <= 0) return {};
+
+  std::wstring out(static_cast<size_t>(size), L'\0');
+  MultiByteToWideChar(CP_UTF8, 0, value.data(), static_cast<int>(value.size()), out.data(), size);
+  return out;
+}
+
+void showMessageBox(std::string_view title, std::string_view message, UINT flags) {
+  const std::wstring wideTitle = utf8ToWide(title);
+  const std::wstring wideMessage = utf8ToWide(message);
+  MessageBoxW(GetActiveWindow(), wideMessage.c_str(), wideTitle.c_str(), flags);
+}
+
+std::string describeExchangeResult(const char* action,
+                                   const data::LibraryExchangeStats& stats,
+                                   const std::string& path) {
+  std::ostringstream out;
+  out << action << " complete.\n\n"
+      << "People processed: " << stats.peopleProcessed << "\n"
+      << "Birth events processed: " << stats.birthEventsProcessed;
+  if (stats.peopleInserted > 0 || stats.peopleUpdated > 0 ||
+      stats.birthEventsInserted > 0 || stats.birthEventsUpdated > 0) {
+    out << "\nPeople inserted: " << stats.peopleInserted
+        << "\nPeople updated: " << stats.peopleUpdated
+        << "\nBirth events inserted: " << stats.birthEventsInserted
+        << "\nBirth events updated: " << stats.birthEventsUpdated;
+  }
+  out << "\n\nFile: " << path;
+  return out.str();
+}
+
+constexpr const wchar_t* kJsonFileFilter =
+    L"JSON Files (*.json)\0*.json\0All Files (*.*)\0*.*\0\0";
 
 void applyApplicationTheme(const asteria::render::ThemePreset& theme) {
   ImGuiStyle& style = ImGui::GetStyle();
@@ -300,6 +339,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
   }
 
   // Workspace panels
+  data::LibraryDatabaseExchange libraryExchange(database);
   LibraryPanel libraryPanel(ctx);
   ChartWorkspacePanel chartPanel(ctx);
   TransitTimelinePanel transitTimelinePanel(ctx);
@@ -356,6 +396,64 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
       // Menu bar
       if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+          if (ImGui::MenuItem("Export Library JSON...")) {
+            auto path = showSaveFileDialog(
+                L"Export Library JSON",
+                "asteria_library.json",
+                kJsonFileFilter,
+                L"json");
+            if (path) {
+              auto result = libraryExchange.exportToFile(*path);
+              if (result.ok()) {
+                showMessageBox(
+                    "Export Library JSON",
+                    describeExchangeResult("Export", result.value(), *path),
+                    MB_OK | MB_ICONINFORMATION);
+              } else {
+                showMessageBox(
+                    "Export Library JSON",
+                    result.error().message,
+                    MB_OK | MB_ICONERROR);
+              }
+            }
+          }
+          if (ImGui::MenuItem("Import Library JSON...")) {
+            auto path = showOpenFileDialog(L"Import Library JSON", kJsonFileFilter);
+            if (path) {
+              auto result = libraryExchange.importFromFile(*path);
+              if (result.ok()) {
+                libraryPanel.reloadData();
+                showMessageBox(
+                    "Import Library JSON",
+                    describeExchangeResult("Import", result.value(), *path),
+                    MB_OK | MB_ICONINFORMATION);
+              } else {
+                showMessageBox(
+                    "Import Library JSON",
+                    result.error().message,
+                    MB_OK | MB_ICONERROR);
+              }
+            }
+          }
+          if (ImGui::MenuItem("Merge Library JSON...")) {
+            auto path = showOpenFileDialog(L"Merge Library JSON", kJsonFileFilter);
+            if (path) {
+              auto result = libraryExchange.mergeFromFile(*path);
+              if (result.ok()) {
+                libraryPanel.reloadData();
+                showMessageBox(
+                    "Merge Library JSON",
+                    describeExchangeResult("Merge", result.value(), *path),
+                    MB_OK | MB_ICONINFORMATION);
+              } else {
+                showMessageBox(
+                    "Merge Library JSON",
+                    result.error().message,
+                    MB_OK | MB_ICONERROR);
+              }
+            }
+          }
+          ImGui::Separator();
           if (ImGui::MenuItem("Exit", "Alt+F4")) running = false;
           ImGui::EndMenu();
         }

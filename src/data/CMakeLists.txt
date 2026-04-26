@@ -1,6 +1,7 @@
 add_library(asteria_data
   sqlite_database.cpp
   migration_runner.cpp
+  library_database_exchange.cpp
   person_repository.cpp
   birth_event_repository.cpp
   location_repository.cpp

@@ -11,6 +11,10 @@ std::optional<std::string> showSaveFileDialog(
     const wchar_t* filter,
     const wchar_t* defaultExtension);
 
+std::optional<std::string> showOpenFileDialog(
+    const std::wstring& title,
+    const wchar_t* filter);
+
 std::string sanitizeFileName(const std::string& value);
 
 }  // namespace asteria::ui
