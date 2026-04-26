@@ -8,6 +8,14 @@ Copyright © 2026 Michael A. McCloskey. Licensed under the [GNU General Public L
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/theosopher)
 
+## Screenshots
+
+### Main Workspace
+![Asteria main workspace](docs/MainScreen.png)
+
+### AI Interpretation
+![Asteria AI interpretation panel](docs/AiInterpretation.png)
+
 ---
 
 ## Features
