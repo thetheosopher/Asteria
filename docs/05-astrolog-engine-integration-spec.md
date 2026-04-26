@@ -1,5 +1,10 @@
 # Astrolog Engine Integration Specification
 
+## Status
+- Implemented in the current repo: `AstrologEmbeddedEngine` is the default computation path and computes the supported chart types into normalized domain output.
+- Partially implemented: `AstrologCliBridge` exists but only the natal path is substantially wired; other bridge methods remain stubs or bring-up utilities.
+- Planned/future-facing: engine-owned location resolution is not complete; atlas/timezone resolution is currently handled by Asteria services outside the embedded engine path.
+
 ## Purpose
 Define how Asteria uses Astrolog as a computation engine while keeping:
 - UI independent

@@ -1,5 +1,10 @@
 # Automation and Batch Specification
 
+## Status
+- Implemented in the current repo: the `asteria_cli` utility, JSON `--input` workflow, transit timeline generation, location resolution, and direct export commands.
+- Partially implemented: this document mixes current command surface with broader automation goals; use the concrete command names below as authoritative for the present repo.
+- Planned/future-facing: direct record-file references, nightly cache warming, and broader regression harnessing remain extensions rather than core product features.
+
 ## Purpose
 Support light scriptability and batch workflows without making the whole product a CLI wrapper.
 
@@ -9,18 +14,18 @@ Support light scriptability and batch workflows without making the whole product
 Used by the desktop app for repeatable export jobs and regression harnesses.
 
 ### Surface 2: External CLI Utility
-Suggested name:
-- asteria-cli
+Current executable:
+- asteria_cli
 
 ## V1 Target Commands
-- compute natal
-- compute synastry
-- compute composite
-- compute transit-to-natal
-- generate transit timeline markdown
-- export svg
-- export png
-- resolve location
+- compute-natal
+- compute-synastry
+- compute-composite
+- compute-transit
+- generate-transit-timeline
+- export-svg
+- export-png
+- resolve-location
 
 ## Input Formats
 Prefer:

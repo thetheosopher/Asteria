@@ -1,5 +1,9 @@
 # Domain Model
 
+## Status
+- Implemented in the current repo: the core entity set in this document is represented in the C++ domain layer and persisted through the data layer.
+- Partially implemented: several field lists here are richer than the current concrete structs and database schema, so treat them as the target domain shape rather than a byte-for-byte snapshot.
+
 ## Design Goals
 The domain model exists to decouple:
 - user data management

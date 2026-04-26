@@ -1,5 +1,10 @@
 # Architecture Overview
 
+## Status
+- Implemented in the current repo: the layered app, UI, core, domain, engine, rendering, data, and automation structure described here broadly matches the checked-in source tree.
+- Partially implemented: some UI concerns described as separate screens are now docked panels and menu surfaces rather than isolated windows.
+- Planned/future-facing: logging, session lifecycle depth, and some secondary tooling paths remain lighter than this overview implies.
+
 ## Architectural Summary
 Asteria is a native Windows desktop application written in C++20. It uses:
 - a desktop application shell

@@ -1,5 +1,10 @@
 # Location and Time-Zone Specification
 
+## Status
+- Implemented in the current repo: atlas-backed city lookup, timezone/DST handling, provenance/confidence fields, and uncertain-time workflows.
+- Partially implemented: location resolution is embedded in existing workflows rather than exposed as a dedicated resolver screen.
+- Planned/future-facing: map-picking and map-pin refinement remain domain/schema-ready but are not yet a completed UI feature.
+
 ## Purpose
 Provide trustworthy location and time handling with explicit provenance and confidence.
 

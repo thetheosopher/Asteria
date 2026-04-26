@@ -1,5 +1,9 @@
 # Asteria Product Vision
 
+## Status
+- Implemented in the current repo: native Windows desktop app, local-first data model, natal/synastry/composite/transit-to-natal charts, SVG/PNG export, built-in interpretation, optional Ollama enhancement.
+- Still aspirational in this document: qualitative claims like "beautiful" and "publication-grade" remain product goals, not hard acceptance proof.
+
 ## Purpose
 Asteria is a native Windows desktop application for power astrologers who want beautiful, accurate, printable astrology charts with a fast local-first workflow and a carefully curated feature set.
 

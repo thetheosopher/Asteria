@@ -1,5 +1,9 @@
 # Interpretation Specification
 
+## Status
+- Implemented in the current repo: built-in deterministic interpretation plus optional local Ollama-enhanced follow-up text.
+- Partially implemented: the UX now uses docked/persistent panels rather than the exact collapsible panel language below, and some richer prompt-context ideas are still evolving.
+
 ## Purpose
 Provide useful textual interpretation without compromising:
 - chart-data determinism

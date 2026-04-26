@@ -1,5 +1,10 @@
 # Database Specification
 
+## Status
+- Implemented in the current repo: SQLite storage, startup migrations, canonical source-data persistence, computed chart caching, settings storage, and export/interpretation tables.
+- Partially implemented: theme persistence and some richer backup/restore workflows described here are still lighter than the full target state.
+- Planned/future-facing: manual backup commands and more defensive migration UX remain design goals.
+
 ## Database Technology
 SQLite is the canonical local data store for Asteria.
 

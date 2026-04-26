@@ -1,5 +1,9 @@
 # Export Specification
 
+## Status
+- Implemented in the current repo: SVG and PNG export, deterministic SVG-focused tests, export naming, and persisted export metadata.
+- Partially implemented: the document describes stronger profile semantics and future "presentation-clean" options that are not yet fully surfaced as end-user controls.
+
 ## Purpose
 Export must produce dependable, presentation-quality chart files suitable for:
 - personal archives

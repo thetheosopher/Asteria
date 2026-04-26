@@ -1,5 +1,10 @@
 # Chart Rendering Specification
 
+## Status
+- Implemented in the current repo: natal, synastry, composite, and transit rendering; shared scene generation; SVG export; PNG rasterization; and the four built-in theme presets.
+- Partially implemented: some collision-management, warning-layout, and export-profile language here is stricter than the current automated guarantees.
+- Planned/future-facing: advanced filtering and stronger layout guarantees remain rendering goals rather than fully enforced invariants.
+
 ## Rendering Mission
 Asteria rendering is a product-defining subsystem. It must produce:
 - elegant on-screen charts

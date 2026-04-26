@@ -41,11 +41,11 @@ Copyright © 2026 Michael A. McCloskey. Licensed under the [GNU General Public L
 
 ## Installation
 
-Public GitHub release artifacts are not published yet. Until the first release is cut, build from source using the instructions below.
+### Installer
+Download the latest `AsteriaSetup-x.y.z.exe` from [Releases](https://github.com/thetheosopher/Asteria/releases) and run it. The installer supports per-user or machine-wide installation with Start Menu and optional desktop shortcuts.
 
-When release artifacts are available, they will be published on [Releases](https://github.com/thetheosopher/Asteria/releases) as:
-- `AsteriaSetup-x.y.z.exe`
-- `Asteria-x.y.z-portable.zip`
+### Portable
+Download the latest `Asteria-x.y.z-portable.zip` from [Releases](https://github.com/thetheosopher/Asteria/releases), extract it to any folder, and run `asteria_app.exe`.
 
 ---
 
