@@ -49,6 +49,9 @@ _deps/
 /assets/Charts-Converted.json
 /assets/asteria_library.json
 
+# Packaging output
+/tools/packaging/Output/
+
 # OS noise
 .DS_Store
 Thumbs.db

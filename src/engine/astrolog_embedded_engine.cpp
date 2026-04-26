@@ -18,7 +18,7 @@ std::string AstrologEmbeddedEngine::getEngineVersion() const {
 }
 
 core::Result<std::vector<domain::LocationResolution>> AstrologEmbeddedEngine::resolveLocation(
-    const std::string& query, const std::string&) const {
+  const std::string&, const std::string&) const {
   // TODO: Integrate with Astrolog's atlas lookup (DisplayAtlasLookup).
   // For now, return a not_implemented error since atlas integration
   // requires loading atlas.as and timezone.as which needs further adapter work.

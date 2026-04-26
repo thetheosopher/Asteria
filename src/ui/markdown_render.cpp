@@ -8,6 +8,18 @@ namespace asteria::ui::markdown_render {
 
 namespace {
 
+ImVec4 blendColor(const ImVec4& base, const ImVec4& accent, float accentWeight) {
+  return ImVec4(
+      base.x + (accent.x - base.x) * accentWeight,
+      base.y + (accent.y - base.y) * accentWeight,
+      base.z + (accent.z - base.z) * accentWeight,
+      base.w + (accent.w - base.w) * accentWeight);
+}
+
+float luminance(const ImVec4& color) {
+  return color.x * 0.2126f + color.y * 0.7152f + color.z * 0.0722f;
+}
+
 int detectHeading(const std::string& line, std::string& content) {
   size_t i = 0;
   while (i < line.size() && line[i] == '#') ++i;
@@ -47,6 +59,24 @@ void renderLineWithBold(const std::string& line, const ImVec4& normalColor,
   }
 
   const bool majorityBold = (totalChars > 0 && boldChars * 2 >= totalChars);
+  if (majorityBold) {
+    ImGui::Spacing();
+    ImGui::SetWindowFontScale(1.08f);
+    ImGui::PushStyleColor(ImGuiCol_Text, boldColor);
+    ImGui::TextWrapped("%s", clean.c_str());
+    ImGui::PopStyleColor();
+    ImGui::SetWindowFontScale(1.0f);
+
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    const float w = ImGui::GetContentRegionAvail().x;
+    ImVec4 accentLine = boldColor;
+    accentLine.w = 0.35f;
+    ImGui::GetWindowDrawList()->AddLine(
+        ImVec2(p.x, p.y - 2), ImVec2(p.x + w, p.y - 2),
+        ImGui::GetColorU32(accentLine), 1.0f);
+    return;
+  }
+
   ImGui::PushStyleColor(ImGuiCol_Text, majorityBold ? boldColor : normalColor);
   ImGui::TextWrapped("%s", clean.c_str());
   ImGui::PopStyleColor();
@@ -56,11 +86,14 @@ void renderLineWithBold(const std::string& line, const ImVec4& normalColor,
 
 void renderMarkdown(const std::string& text) {
   const ImVec4 colorNormal = ImGui::GetStyleColorVec4(ImGuiCol_Text);
-  const ImVec4 colorBold   = ImVec4(1.0f, 0.9f, 0.5f, 1.0f);
-  const ImVec4 colorH1     = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
-  const ImVec4 colorH2     = ImVec4(0.5f, 0.85f, 0.95f, 1.0f);
-  const ImVec4 colorH3     = ImVec4(0.6f, 0.9f, 0.9f, 1.0f);
-  const ImVec4 colorBullet = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+  const ImVec4 colorAccent = ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive);
+  const ImVec4 colorBullet = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
+  const ImVec4 colorWindow = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+  const bool lightTheme = luminance(colorWindow) > 0.55f;
+  const ImVec4 colorBold = blendColor(colorNormal, colorAccent, lightTheme ? 0.30f : 0.60f);
+  const ImVec4 colorH1 = blendColor(colorNormal, colorAccent, lightTheme ? 0.45f : 0.82f);
+  const ImVec4 colorH2 = blendColor(colorNormal, colorAccent, lightTheme ? 0.35f : 0.68f);
+  const ImVec4 colorH3 = blendColor(colorNormal, colorAccent, lightTheme ? 0.25f : 0.54f);
 
   std::istringstream stream(text);
   std::string line;

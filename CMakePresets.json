@@ -2,14 +2,14 @@
   "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 28,
+    "minor": 23,
     "patch": 0
   },
   "configurePresets": [
     {
       "name": "default",
       "displayName": "Default Configure",
-      "generator": "Visual Studio 18 2026",
+      "generator": "Visual Studio 17 2022",
       "architecture": {
         "value": "x64",
         "strategy": "set"

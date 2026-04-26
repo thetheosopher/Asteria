@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.23)
 
 project(Asteria VERSION 1.0.0 LANGUAGES C CXX)
 
@@ -50,12 +50,14 @@ if (MSVC)
 endif()
 
 # SQLite3 via amalgamation
-FetchContent_Declare(
-  sqlite3
+set(sqlite3_fetch_args
   URL "https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip"
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   TLS_VERIFY OFF
 )
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24")
+  list(APPEND sqlite3_fetch_args DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+endif()
+FetchContent_Declare(sqlite3 ${sqlite3_fetch_args})
 FetchContent_MakeAvailable(sqlite3)
 add_library(sqlite3_lib STATIC ${sqlite3_SOURCE_DIR}/sqlite3.c)
 target_include_directories(sqlite3_lib PUBLIC ${sqlite3_SOURCE_DIR})
