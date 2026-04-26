@@ -18,6 +18,8 @@
 #include "settings_panel.h"
 #include "ai_interpretation_panel.h"
 #include "astrology_font.h"
+#include "about_dialog.h"
+#include "version.h"
 #include "util/atlas_service.h"
 #include "render/theme_presets.h"
 
@@ -27,10 +29,12 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+// Global DX11 device — exposed for texture loading (e.g. About dialog icon)
+ID3D11Device* g_pd3dDevice = nullptr;
+
 namespace {
 
 // Direct3D globals
-ID3D11Device*           g_pd3dDevice        = nullptr;
 ID3D11DeviceContext*    g_pd3dDeviceContext  = nullptr;
 IDXGISwapChain*         g_pSwapChain        = nullptr;
 ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
@@ -250,11 +254,13 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
   wc.style         = CS_CLASSDC;
   wc.lpfnWndProc   = WndProc;
   wc.hInstance      = GetModuleHandleW(nullptr);
+  wc.hIcon         = LoadIconW(wc.hInstance, MAKEINTRESOURCEW(101));
+  wc.hIconSm       = LoadIconW(wc.hInstance, MAKEINTRESOURCEW(101));
   wc.lpszClassName  = L"AsteriaWindow";
   RegisterClassExW(&wc);
 
   HWND hwnd = CreateWindowExW(
-      0, wc.lpszClassName, L"Asteria",
+      0, wc.lpszClassName, L"Asteria v1.0.0",
       WS_OVERLAPPEDWINDOW,
       100, 100, 1600, 1000,
       nullptr, nullptr, wc.hInstance, nullptr);
@@ -371,6 +377,12 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
           }
           ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Help")) {
+          if (ImGui::MenuItem("About Asteria")) {
+            openAboutDialog();
+          }
+          ImGui::EndMenu();
+        }
         ImGui::EndMenuBar();
       }
 
@@ -391,6 +403,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
     }
 
     // Draw workspace panels
+    drawAboutDialog();
     libraryPanel.draw();
     chartPanel.setSelectedPerson(libraryPanel.selectedPersonId());
     transitTimelinePanel.setSelectedPerson(libraryPanel.selectedPersonId());

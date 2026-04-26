@@ -1,10 +1,14 @@
 # Third-Party Notices
 
+Asteria — Copyright (C) 2026 Michael A. McCloskey
+Licensed under the GNU General Public License v2 or later.
+Source code: https://github.com/thetheosopher/Asteria
+
 Asteria includes the following third-party components:
 
 ## Astrolog 7.80
 - Author: Walter D. Pullen
-- License: GNU General Public License (GPL)
+- License: GNU General Public License v2
 - URL: https://www.astrolog.org/
 - Usage: Embedded as computation engine for chart calculations
 
@@ -14,11 +18,23 @@ Asteria includes the following third-party components:
 - URL: https://www.astro.com/swisseph/
 - Usage: High-precision planetary position calculations (via Astrolog)
 
+## Dear ImGui
+- Author: Omar Cornut
+- License: MIT License
+- URL: https://github.com/ocornut/imgui
+- Usage: Immediate-mode graphical user interface
+
 ## SQLite
 - Author: D. Richard Hipp et al.
 - License: Public Domain
 - URL: https://www.sqlite.org/
 - Usage: Local database storage
+
+## cpp-httplib
+- Author: Yuji Hirose
+- License: MIT License
+- URL: https://github.com/yhirose/cpp-httplib
+- Usage: HTTP client for local Ollama API
 
 ## Google Test
 - Author: Google Inc.

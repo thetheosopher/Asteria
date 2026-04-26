@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(Asteria VERSION 0.1.0 LANGUAGES C CXX)
+project(Asteria VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Use static CRT in Release to minimize deployed DLLs; dynamic in Debug for GTest compat
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:DebugDLL>")
 
 option(ASTERIA_BUILD_TESTS "Build tests" ON)
 

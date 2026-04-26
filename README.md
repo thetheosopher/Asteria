@@ -1,169 +1,136 @@
-# Asteria Starter Pack
+# Asteria
 
-    Asteria is a native Windows-first C++ astrology application scaffold for power astrologers.
+**A native Windows astrology application for power astrologers.**
 
-    This starter pack gives you:
-    - a complete **docs/** spec pack
-    - top-level bootstrap files
-    - a **CMake**-based C++ repository scaffold
-    - a small fake-engine + SVG export path so you can start iterating immediately
-    - placeholders and scripts for vendoring **Astrolog** source under `third_party/astrolog/`
+Asteria is a fully-featured astrological charting desktop application built in C++ with an embedded [Astrolog](https://www.astrolog.org/) computation engine, Dear ImGui interface, and Swiss Ephemeris precision.
 
-    > **Important:** This package does **not** bundle Astrolog source code. The folder `third_party/astrolog/` contains instructions and placeholder files only. You should download the official Astrolog source package yourself and place it there.
+Copyright © 2026 Michael A. McCloskey. Licensed under the [GNU General Public License v2](LICENSE) (or later).
 
-    ## Quick Start
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/theosopher)
 
-    1. Open this folder in **VSCode**.
-    2. Read:
-       - `docs/00-product-vision.md`
-       - `docs/01-architecture-overview.md`
-       - `docs/copilot-instructions.md`
-       - `docs/prompt-sequence.md`
-    3. Configure with CMake:
-       ```powershell
-       cmake --preset default
-       cmake --build --preset debug
-       ```
-    4. Run the bootstrap sample:
-       ```powershell
-       .uild\debug\srcppsteria_app.exe
-       ```
-    5. Inspect the generated sample SVG next to the executable or in the working directory you launch from.
+---
 
-    ## Current Bootstrap Behavior
+## Features
 
-    The current scaffold builds a minimal native executable that:
-    - creates a fake natal chart in memory
-    - normalizes it through a fake engine
-    - renders a deterministic SVG using the vector-first rendering path
+### Chart Computation
+- **Natal charts** with Sun through Pluto, house cusps (Placidus, Koch, Whole Sign), and aspect grid
+- **Synastry** bi-wheel with inter-aspect analysis
+- **Composite** midpoint charts
+- **Transit-to-natal** overlays with outer transit ring
+- **Transit timeline** reports with configurable date ranges, planets, and aspects
 
-    This is intentionally small so you can layer in:
-    - SQLite persistence
-n    - Qt UI shell
-    - Astrolog embedded adapter
-    - automation CLI
-    - richer rendering/layout
+### Interpretation
+- Built-in deterministic interpretation engine with uncertainty guardrails
+- Optional AI-powered interpretation via local [Ollama](https://ollama.com/) integration
 
-    ## Repository Layout
+### Export
+- **SVG** vector export with deterministic, archival-quality output
+- **PNG** rasterized export with reference sheet layouts
+- Clipboard copy of chart text for AI chat prompts
 
-    ```text
-    docs/               Product and technical specs
-    src/                C++ source code
-    tests/              Unit/integration/golden fixtures
-    tools/              Scripts and packaging helpers
-    third_party/        Vendored external code (Astrolog placeholder only)
-    ```
+### Data Management
+- SQLite database with person/birth-event CRUD
+- Atlas with 20,000+ cities and timezone lookup
+- Chart caching by canonical hash
 
-    ## Automation CLI
+### Automation
+- Full CLI (`asteria_cli`) for scripted chart computation, export, and transit timeline generation
+- JSON request file support for batch workflows
 
-      The automation executable is built at `build/default/src/automation/Debug/asteria_cli.exe` and now uses the real embedded Astrolog engine for chart computation and export commands.
+---
 
-      Every compute, export, and timeline command also accepts `--input <path>` to load the same request fields from a JSON object file. Inline flags take precedence over the JSON file, so you can keep a reusable request on disk and override just the fields you need for a one-off run. Checked-in request samples live under `tools/examples/automation-cli/`.
+## Installation
 
-    Example commands:
+### Installer (Recommended)
+Download the latest `AsteriaSetup-x.x.x.exe` from [Releases](https://github.com/thetheosopher/Asteria/releases) and run it. The installer supports per-user or machine-wide installation with Start Menu and optional desktop shortcuts.
 
-    ```powershell
-    .\build\default\src\automation\Debug\asteria_cli.exe compute-natal `
-       --primary-datetime 1990-01-01T12:00 `
-       --primary-latitude 40 `
-       --primary-longitude -75 `
-       --primary-timezone -5
+### Portable
+Download the `Asteria-x.x.x-portable.zip` from [Releases](https://github.com/thetheosopher/Asteria/releases), extract to any folder, and run `asteria_app.exe`.
 
-    .\build\default\src\automation\Debug\asteria_cli.exe compute-synastry `
-       --primary-datetime 1990-01-01T12:00 `
-       --primary-latitude 40 `
-       --primary-longitude -75 `
-       --primary-timezone -5 `
-       --secondary-datetime 1992-05-12T08:30 `
-       --secondary-latitude 34 `
-       --secondary-longitude -118 `
-       --secondary-timezone -8
+---
 
-    .\build\default\src\automation\Debug\asteria_cli.exe compute-transit `
-       --primary-datetime 1990-01-01T12:00 `
-       --primary-latitude 40 `
-       --primary-longitude -75 `
-       --primary-timezone -5 `
-       --transit-datetime 2026-04-24T12:00
+## Building from Source
 
-    .\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline `
-       --natal-datetime 1990-01-01T12:00 `
-       --natal-latitude 40 `
-       --natal-longitude -75 `
-       --natal-timezone -5 `
-       --start 2026-01-01T00:00 `
-       --years 5 `
-       --transit-planets Jupiter,Saturn,Uranus `
-       --aspects Conjunction,Square,Opposition `
-       --output .\reports\transit_timeline.md
+### Prerequisites
+- **Windows 10/11** (x64)
+- **Visual Studio 2025** (or later) with C++ desktop workload
+- **CMake 3.28+**
+- Internet access for FetchContent dependencies (Dear ImGui, SQLite, GoogleTest, cpp-httplib)
 
-    .\build\default\src\automation\Debug\asteria_cli.exe export-svg `
-       --chart-type transit `
-       --primary-datetime 1990-01-01T12:00 `
-       --primary-latitude 40 `
-       --primary-longitude -75 `
-       --primary-timezone -5 `
-       --transit-datetime 2026-04-24T12:00 `
-       --output .\exports\transit_chart.svg
+### Build
 
-    .\build\default\src\automation\Debug\asteria_cli.exe resolve-location --query Denver
-    ```
+```powershell
+cmake --preset default
+cmake --build build/default --config Release
+```
 
-      Example JSON request files:
+### Run
 
-      ```json
-      {
-         "primary": {
-            "datetime": "1990-01-01T12:00",
-            "latitude": 40.0,
-            "longitude": -75.0,
-            "timezone": -5.0,
-            "dst": 0.0
-         },
-         "houseSystem": "Placidus",
-         "zodiacMode": "Tropical"
-      }
-      ```
+```powershell
+.\build\default\src\app\Release\asteria_app.exe
+```
 
-      ```powershell
-      .\build\default\src\automation\Debug\asteria_cli.exe compute-natal --input .\tools\examples\automation-cli\compute_natal.json
+### Test
 
-      .\build\default\src\automation\Debug\asteria_cli.exe compute-natal `
-         --input .\tools\examples\automation-cli\compute_natal.json `
-         --house-system Whole
-      ```
+```powershell
+cmake --build build/default --config Debug --target asteria_tests
+ctest --test-dir build/default --build-config Debug
+```
 
-      ```json
-      {
-         "subjectName": "Casey Example",
-         "natal": {
-            "datetime": "1990-01-01T12:00",
-            "latitude": 40.0,
-            "longitude": -75.0,
-            "timezone": -5.0,
-            "dst": 0.0
-         },
-         "start": "2026-01-01T00:00",
-         "years": 5,
-         "transitPlanets": ["Jupiter", "Saturn", "Uranus"],
-         "aspects": ["Conjunction", "Square", "Opposition"],
-         "orbs": {
-            "Conjunction": 1.0,
-            "Square": 0.8,
-            "Opposition": 1.0
-         },
-         "output": ".\\reports\\transit_timeline.md"
-      }
-      ```
+---
 
-      ```powershell
-      .\build\default\src\automation\Debug\asteria_cli.exe generate-transit-timeline --input .\tools\examples\automation-cli\generate_transit_timeline.json
-      ```
+## CLI Usage
 
-    ## Suggested Next Steps
+The automation CLI is built alongside the main application:
 
-    1. Vendor Astrolog into `third_party/astrolog/`.
-    2. Implement the SQLite layer under `src/data/`.
-    3. Expand the renderer from the sample natal chart to a full wheel layout.
-    4. Add a Qt main window shell under `src/ui/`.
-    5. Follow `docs/prompt-sequence.md` in order.
+```powershell
+# Compute a natal chart
+.\asteria_cli.exe compute-natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5
+
+# Export SVG
+.\asteria_cli.exe export-svg --chart-type natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5 --output chart.svg
+
+# Generate transit timeline
+.\asteria_cli.exe generate-transit-timeline --natal-datetime 1990-01-01T12:00 --natal-latitude 40 --natal-longitude -75 --natal-timezone -5 --start 2026-01-01T00:00 --years 5 --output timeline.md
+
+# Resolve a location
+.\asteria_cli.exe resolve-location --query Denver
+```
+
+JSON request files are also supported with `--input <path>`. See `tools/examples/automation-cli/` for samples.
+
+---
+
+## Project Structure
+
+```
+src/
+  app/          Main application entry point
+  automation/   CLI tool
+  core/         Services (natal, comparison, transit, interpretation, export)
+  data/         SQLite repositories and migrations
+  domain/       Domain model (Person, BirthEvent, ComputedChart, etc.)
+  engine/       Astrolog adapter and embedded engine
+  render/       Chart scene, layout, SVG/PNG serializers
+  ui/           Dear ImGui panels and application window
+  util/         Atlas service, Ollama client
+tests/          Unit and integration tests
+third_party/    Vendored Astrolog source and Swiss Ephemeris
+tools/          Build scripts, packaging, examples
+docs/           Product specs and architecture docs
+```
+
+---
+
+## License
+
+Asteria is licensed under the [GNU General Public License v2](LICENSE) (or later), consistent with the embedded Astrolog engine.
+
+See [NOTICES.txt](tools/packaging/NOTICES.txt) for third-party attributions.
+
+---
+
+## Support
+
+- **GitHub:** [github.com/thetheosopher/Asteria](https://github.com/thetheosopher/Asteria)
+- **Buy Me a Coffee:** [buymeacoffee.com/theosopher](https://buymeacoffee.com/theosopher)
