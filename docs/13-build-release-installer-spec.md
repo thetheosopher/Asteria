@@ -1,27 +1,29 @@
 # Build, Release, and Installer Specification
 
+This document describes the current repository build and packaging workflow.
+
 ## Goals
 Deliver installer-grade polish early while keeping developer workflows straightforward.
 
 ## Build System
 - CMake
 - CMake presets
-- Ninja
-- MSVC toolchain
+- MSVC multi-config generator via Visual Studio 2022 (`Visual Studio 17 2022`)
+- Inno Setup installer packaging
+- PowerShell portable ZIP packaging script
 
 ## Build Variants
 - Debug
-- RelWithDebInfo
 - Release
+- RelWithDebInfo and MinSizeRel remain available through the Visual Studio generator when needed
 
 ## Release Artifacts
 - Asteria desktop executable
-- required runtime dependencies
-- installer package
+- installer package (`AsteriaSetup-<version>.exe`)
+- portable ZIP package (`Asteria-<version>-portable.zip`)
 - optional automation CLI utility
 - license/attribution documents
-- sample themes
-- app icon assets
+- bundled runtime assets (`atlasbig.as`, `timezone.as`, `astrolog_data/`, `Astro.ttf`, app icon assets)
 
 ## Installer Goals
 - simple install path
@@ -37,8 +39,10 @@ Inno Setup
 ## Packaging Requirements
 - include vendor notices
 - include GPL-compliance materials appropriate to distribution posture
-- package local assets and themes
-- package default database initialization assets if needed
+- package local assets, fonts, and runtime data files used by the app at launch
+- package `atlasbig.as` and `timezone.as` next to the executable
+- package Astrolog engine files under `astrolog_data/`
+- no pre-built database required; the SQLite database is created on first launch
 
 ## Developer Build Goals
 - one-command configure

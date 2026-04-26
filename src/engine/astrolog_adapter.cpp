@@ -22,8 +22,8 @@ bool AstrologAdapter::initialize(const std::string& dataPath) {
   s_dataPath = dataPath;
   const std::string ephemPath = (std::filesystem::path(dataPath) / "ephem").string();
 
-  // Set environment variable so Astrolog can find its data files
-  // (astrolog.as, atlas.as, timezone.as, ephem/)
+  // Set environment variables so Astrolog can find its computation data files
+  // (astrolog.as and ephem/).
 #ifdef _WIN32
   _putenv_s("ASTROLOG", dataPath.c_str());
   _putenv_s("SE_EPHE_PATH", ephemPath.c_str());

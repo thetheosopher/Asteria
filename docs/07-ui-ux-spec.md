@@ -1,5 +1,7 @@
 # UI / UX Specification
 
+This document reflects the current V1 desktop workflow implemented in the Dear ImGui application.
+
 ## UX Goals
 Asteria must feel:
 - focused
@@ -9,27 +11,32 @@ Asteria must feel:
 - trustworthy when data is uncertain
 
 ## Primary Navigation Model
-Recommended main areas:
+Current main panels:
 - Library
 - Chart Workspace
+- Transit Timeline
 - Compare Workspace
-- Location Resolver
-- Settings
+- AI Interpretation
 
-## Screen 1: Library
+Settings are surfaced from the View menu rather than a standalone settings screen.
+Location resolution is embedded in library and record-editing workflows rather than a dedicated resolver screen.
+
+## Panel 1: Library
 Purpose:
 - manage people and birth records
-- search, tag, organize, and reopen prior work
+- search, organize, and reopen prior work
+- resolve and store location data during record editing
 
 Core elements:
 - search box
-- tag filter
 - people list
+- birth event list/editor
 - record summary panel
-- recent charts
 - create/edit/delete actions
+- inline location lookup and resolution helpers
+- import/export/merge actions exposed from the File menu
 
-## Screen 2: Chart Workspace
+## Panel 2: Chart Workspace
 Purpose:
 - display natal, composite, and transit-to-natal charts
 - show metadata, warnings, and interpretation
@@ -37,13 +44,26 @@ Purpose:
 Core elements:
 - chart canvas
 - chart-type switcher
-- theme selector
 - metadata panel
 - uncertainty warning area
 - export actions
-- interpretation panel toggle
+- built-in interpretation output
+- send/share actions to the AI Interpretation panel when enabled
 
-## Screen 3: Compare Workspace
+## Panel 3: Transit Timeline
+Purpose:
+- generate longitudinal transit reports for the selected subject
+- review, save, and forward markdown output for follow-up interpretation
+
+Core elements:
+- subject selection via current library selection
+- start date / years configuration
+- transit planet and aspect filters
+- markdown report output
+- save markdown action
+- ask AI follow-up action
+
+## Panel 4: Compare Workspace
 Purpose:
 - display synastry and composite workflows
 
@@ -57,23 +77,22 @@ Core elements:
 - supporting metadata
 - export actions
 
-## Screen 4: Location Resolver
+## Panel 5: AI Interpretation
 Purpose:
-- resolve city input into coordinates/time-zone data
-- show provenance and confidence
+- generate local-AI-assisted follow-up interpretations and summaries
+- display status, errors, and exported markdown responses
 
 Core elements:
-- search field
-- candidate results list
-- map preview/pin
-- confidence/provenance panel
-- accept/override controls
+- prompt generation from chart/transit context
+- markdown response viewer
+- save/export actions
+- status and error display
 
-## Screen 5: Settings
+## Settings Surface
 Purpose:
 - product-level defaults and advanced options
 
-Core elements:
+Current settings are available from the View menu and include:
 - default theme
 - default house system
 - unknown-time policy
@@ -81,6 +100,8 @@ Core elements:
 - interpretation settings
 - Ollama integration settings
 - developer/debug options
+
+The legacy Settings panel currently redirects users to the View menu rather than acting as a primary surface.
 
 ## Record Editing UX
 Birth record editing must support:
@@ -109,11 +130,12 @@ Warnings must be visible, not buried:
 ## Theme UX
 Theme changes should be:
 - fast
-- previewable
+- immediately applied
 - non-destructive
 - export-consistent
 
 ## Non-Goals in V1
+- standalone map/location-resolver screen
 - infinitely customizable layouts
 - dashboard clutter
 - social or cloud UX

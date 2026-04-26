@@ -10,7 +10,7 @@ Complete all items before publishing a release.
 
 ## Testing
 
-- [ ] All unit tests pass: `ctest --build-config Release`
+- [ ] All checked-in automated tests pass: `ctest --test-dir build/default --build-config Debug --output-on-failure`
 - [ ] All integration tests pass (database, Astrolog engine)
 - [ ] Golden SVG output matches expected (determinism check)
 - [ ] Manual smoke test: launch app, create a person, compute natal chart
@@ -45,13 +45,13 @@ Complete all items before publishing a release.
 - [ ] Exported files contain chart content (not empty/blank)
 
 ### CLI Automation
-- [ ] `asteria-cli compute natal` works
-- [ ] `asteria-cli compute synastry` works
-- [ ] `asteria-cli compute composite` works
-- [ ] `asteria-cli compute transit-to-natal` works
-- [ ] `asteria-cli export svg` works
-- [ ] `asteria-cli export png` works
-- [ ] `asteria-cli resolve location` works
+- [ ] `asteria_cli compute-natal` works
+- [ ] `asteria_cli compute-synastry` works
+- [ ] `asteria_cli compute-composite` works
+- [ ] `asteria_cli compute-transit` works
+- [ ] `asteria_cli export-svg` works
+- [ ] `asteria_cli export-png` works
+- [ ] `asteria_cli resolve-location` works
 
 ### Database
 - [ ] Fresh database creation works (first launch)

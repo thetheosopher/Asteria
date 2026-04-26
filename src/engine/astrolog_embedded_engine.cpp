@@ -21,7 +21,7 @@ core::Result<std::vector<domain::LocationResolution>> AstrologEmbeddedEngine::re
   const std::string&, const std::string&) const {
   // TODO: Integrate with Astrolog's atlas lookup (DisplayAtlasLookup).
   // For now, return a not_implemented error since atlas integration
-  // requires loading atlas.as and timezone.as which needs further adapter work.
+  // requires wiring atlasbig.as and timezone.as into this engine path.
   return Result<std::vector<domain::LocationResolution>>::failure(
       {"not_implemented", "Location resolution via Astrolog atlas is not yet integrated. "
        "Use coordinates directly in ChartRequest."});

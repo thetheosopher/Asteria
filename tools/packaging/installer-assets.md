@@ -13,19 +13,19 @@ All assets required for the Asteria installer package.
 
 | Asset | Source Path | Required |
 |-------|-----------|----------|
-| VCRUNTIME140.dll | VS Redist / system | Yes (or bundled redist) |
-| MSVCP140.dll | VS Redist / system | Yes (or bundled redist) |
+| Windows 10/11 DirectX 11 runtime | Operating system | Yes |
 
-> **Note**: Prefer installing the VC++ Redistributable as a prerequisite
-> rather than bundling individual DLLs.
+> **Note**: Release packages use the static MSVC runtime and do not require
+> `VCRUNTIME140.dll` / `MSVCP140.dll` to be bundled. Debug builds still use the
+> Debug CRT and are not redistributable artifacts.
 
 ## Astrolog Data Files
 
 | Asset | Source Path | Required |
 |-------|-----------|----------|
-| astrolog.as | `third_party/astrolog/astrolog.as` | Yes |
-| atlas.as | `third_party/astrolog/atlas.as` | Yes |
-| timezone.as | `third_party/astrolog/timezone.as` | Yes |
+| atlasbig.as | `assets/atlasbig.as` | Yes (next to exe) |
+| timezone.as | `third_party/astrolog/timezone.as` | Yes (next to exe) |
+| astrolog.as | `third_party/astrolog/astrolog.as` | Yes (`astrolog_data/`) |
 | sefstars.txt | `third_party/astrolog/sefstars.txt` | Yes |
 | seorbel.txt | `third_party/astrolog/seorbel.txt` | Yes |
 | ephem/*.se1 | `third_party/astrolog/ephem/` | Yes |

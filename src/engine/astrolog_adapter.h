@@ -14,7 +14,8 @@ namespace asteria::engine {
 class AstrologAdapter {
  public:
   /// Initialize the Astrolog engine. Must be called once before any computation.
-  /// dataPath: directory containing astrolog.as, atlas.as, timezone.as, ephem/
+  /// dataPath: directory containing astrolog.as and ephem/.
+  /// Atlas and timezone lookup files are loaded separately by AtlasService.
   static bool initialize(const std::string& dataPath);
 
   /// Check if the engine has been initialized.

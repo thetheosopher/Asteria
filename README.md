@@ -41,11 +41,11 @@ Copyright © 2026 Michael A. McCloskey. Licensed under the [GNU General Public L
 
 ## Installation
 
-### Installer (Recommended)
-Download the latest `AsteriaSetup-x.x.x.exe` from [Releases](https://github.com/thetheosopher/Asteria/releases) and run it. The installer supports per-user or machine-wide installation with Start Menu and optional desktop shortcuts.
+Public GitHub release artifacts are not published yet. Until the first release is cut, build from source using the instructions below.
 
-### Portable
-Download the `Asteria-x.x.x-portable.zip` from [Releases](https://github.com/thetheosopher/Asteria/releases), extract to any folder, and run `asteria_app.exe`.
+When release artifacts are available, they will be published on [Releases](https://github.com/thetheosopher/Asteria/releases) as:
+- `AsteriaSetup-x.y.z.exe`
+- `Asteria-x.y.z-portable.zip`
 
 ---
 
@@ -53,9 +53,11 @@ Download the `Asteria-x.x.x-portable.zip` from [Releases](https://github.com/the
 
 ### Prerequisites
 - **Windows 10/11** (x64)
-- **Visual Studio 2025** (or later) with C++ desktop workload
-- **CMake 3.28+**
+- **Visual Studio 2022** (or later) with C++ desktop workload
+- **CMake 3.23+**
 - Internet access for FetchContent dependencies (Dear ImGui, SQLite, GoogleTest, cpp-httplib)
+
+The checked-in `default` preset currently targets the Visual Studio 2022 generator (`Visual Studio 17 2022`).
 
 ### Build
 
@@ -85,16 +87,16 @@ The automation CLI is built alongside the main application:
 
 ```powershell
 # Compute a natal chart
-.\asteria_cli.exe compute-natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5
+.\build\default\src\automation\Release\asteria_cli.exe compute-natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5
 
 # Export SVG
-.\asteria_cli.exe export-svg --chart-type natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5 --output chart.svg
+.\build\default\src\automation\Release\asteria_cli.exe export-svg --chart-type natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5 --output chart.svg
 
 # Generate transit timeline
-.\asteria_cli.exe generate-transit-timeline --natal-datetime 1990-01-01T12:00 --natal-latitude 40 --natal-longitude -75 --natal-timezone -5 --start 2026-01-01T00:00 --years 5 --output timeline.md
+.\build\default\src\automation\Release\asteria_cli.exe generate-transit-timeline --natal-datetime 1990-01-01T12:00 --natal-latitude 40 --natal-longitude -75 --natal-timezone -5 --start 2026-01-01T00:00 --years 5 --output timeline.md
 
 # Resolve a location
-.\asteria_cli.exe resolve-location --query Denver
+.\build\default\src\automation\Release\asteria_cli.exe resolve-location --query Denver
 ```
 
 JSON request files are also supported with `--input <path>`. See `tools/examples/automation-cli/` for samples.

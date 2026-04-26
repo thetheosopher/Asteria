@@ -1,5 +1,7 @@
 # Testing Strategy
 
+This document describes the intended V1 testing envelope. The checked-in automated suite is currently a subset of this plan; treat the items below as strategy targets rather than a claim that every category is already fully implemented.
+
 ## Goals
 Ensure:
 - chart computation correctness

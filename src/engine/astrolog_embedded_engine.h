@@ -8,7 +8,7 @@ namespace asteria::engine {
 class AstrologEmbeddedEngine final : public IChartEngine {
  public:
   /// Construct with the path to the Astrolog data directory
-  /// (containing astrolog.as, atlas.as, ephem/, etc.)
+    /// (containing astrolog.as and ephem/, etc.)
   explicit AstrologEmbeddedEngine(const std::string& dataPath);
 
   core::Result<std::vector<domain::LocationResolution>> resolveLocation(

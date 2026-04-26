@@ -22,7 +22,7 @@ Generate a README.md for the repo that explains:
 ### Prompt 4
 Generate .gitignore for:
 - CMake
-- Ninja
+- Visual Studio
 - VSCode
 - build outputs
 - local database files
@@ -53,7 +53,7 @@ Generate a minimal application skeleton with:
 - main()
 - application startup
 - one main window class
-- placeholder navigation for Library, Chart Workspace, Compare Workspace, and Settings
+- placeholder navigation for Library, Chart Workspace, Transit Timeline, Compare Workspace, and AI Interpretation
 
 Do not add business logic yet.
 
