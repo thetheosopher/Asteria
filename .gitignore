@@ -43,6 +43,7 @@ _deps/
 /cache/
 *.svg
 *.png
+!/docs/*.png
 
 # Local library import/export assets
 /assets/Charts.json
