@@ -1,0 +1,22 @@
+{
+  "chartType": "natal",
+  "primary": {
+    "datetime": "1990-01-01T12:00",
+    "latitude": 40.0,
+    "longitude": -75.0,
+    "timezone": -5.0,
+    "dst": 0.0
+  },
+  "houseSystem": "Placidus",
+  "zodiacMode": "Tropical",
+  "themeName": "Textbook Light",
+  "title": "Natal AI Report",
+  "sourceLabel": "Example natal chart",
+  "modelLabel": "example-model",
+  "interpretationMarkdown": "## AI Interpretation\n\nThis is example Markdown supplied to the PDF report command.\n\n1. Review chart themes.\n2. Compare built-in and AI notes.",
+  "template": "client",
+  "includeBuiltIn": true,
+  "preferVectorChart": true,
+  "archivalMode": false,
+  "output": ".\\build\\default\\src\\automation\\Debug\\example_ai_report.pdf"
+}

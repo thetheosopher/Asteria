@@ -7,8 +7,11 @@
 #include <thread>
 #include <vector>
 
+#include "core/report_service.h"
 #include "domain/computed_chart.h"
 #include "domain/types.h"
+#include "render/chart_scene.h"
+#include "render/theme_presets.h"
 
 namespace asteria::ui {
 
@@ -44,9 +47,18 @@ class AiInterpretationPanel {
   void startGeneration();
   void stopGeneration();
   void saveInterpretation();
+  void copyInterpretation();
+  void copyInterpretationPackage();
+  void savePdfReport();
+  void drawReportPreview();
   void clearOutputState();
   std::string currentAnalysisLabel() const;
   std::string currentQueryTypeLabel() const;
+  render::ThemePreset currentThemePreset() const;
+  std::optional<render::ChartScene> buildReportScene() const;
+  core::PdfReportRequest buildReportRequest(const std::string& outputPath = {}) const;
+  std::string deterministicInterpretationMarkdown() const;
+  std::string generatedAtLabel() const;
   std::string buildPrompt() const;
   std::string chartFactsBlock() const;
 
@@ -62,6 +74,11 @@ class AiInterpretationPanel {
 
   // User addendum field.
   char m_focusBuf[512] = {};
+  core::PdfReportTemplate m_reportTemplate = core::PdfReportTemplate::ClientReport;
+  bool m_reportIncludeBuiltIn = true;
+  bool m_reportArchivalMode = false;
+  bool m_reportPreferVectorChart = false;
+  bool m_reportPreviewOpen = false;
 
   // Streaming state — shared between UI thread and worker.
   std::mutex m_mutex;

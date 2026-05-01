@@ -27,7 +27,8 @@ enum class InterpretationSourceType {
 
 enum class ExportType {
   Svg,
-  Png
+  Png,
+  Pdf
 };
 
 struct PlanetPosition {

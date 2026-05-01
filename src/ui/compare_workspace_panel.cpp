@@ -2,11 +2,14 @@
 #include "ai_interpretation_panel.h"
 #include "app_context.h"
 #include "astrology_font.h"
+#include "clipboard.h"
 #include "export_options.h"
 #include "file_dialog.h"
 #include "../render/astro_glyphs.h"
 #include "render/comparison_chart_layout.h"
 #include "render/export_layout_templates.h"
+#include "render/png_rasterizer.h"
+#include "render/svg_serializer.h"
 #include "render/theme_presets.h"
 #include "core/birth_event_resolver.h"
 #include "imgui.h"
@@ -14,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <mutex>
+#include <sstream>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -498,6 +502,45 @@ void CompareWorkspacePanel::draw() {
                                  : "Export failed: " + result.error().message;
   };
 
+  auto copySvgAction = [&]() {
+    const std::string nameA = (personA_ >= 0 && personA_ < static_cast<int>(m_people.size()))
+        ? m_people[personA_].fullName
+        : std::string("Person A");
+    const std::string nameB = (personB_ >= 0 && personB_ < static_cast<int>(m_people.size()))
+        ? m_people[personB_].fullName
+        : std::string("Person B");
+    std::ostringstream fallback;
+    fallback << "Asteria Comparison Chart\n\n"
+             << "Mode: " << (compareMode_ == 0 ? "Synastry" : "Composite") << '\n'
+             << "Person A: " << nameA << '\n'
+             << "Person B: " << nameB << '\n';
+    const auto scene = buildComparisonScene();
+    const std::string svg = render::serializeSvg(scene);
+    if (!svg.empty() && clipboard::setSvg(svg, fallback.str())) {
+      statusMessage_ = "Comparison chart SVG copied to clipboard.";
+    }
+  };
+
+  auto copyImageAction = [&]() {
+    const std::string nameA = (personA_ >= 0 && personA_ < static_cast<int>(m_people.size()))
+        ? m_people[personA_].fullName
+        : std::string("Person A");
+    const std::string nameB = (personB_ >= 0 && personB_ < static_cast<int>(m_people.size()))
+        ? m_people[personB_].fullName
+        : std::string("Person B");
+    std::ostringstream fallback;
+    fallback << "Asteria Comparison Chart\n\n"
+             << "Mode: " << (compareMode_ == 0 ? "Synastry" : "Composite") << '\n'
+             << "Person A: " << nameA << '\n'
+             << "Person B: " << nameB << '\n';
+    const auto scene = buildComparisonScene();
+    render::RasterImage image;
+    if (render::rasterizeSceneRgb(scene, 1400, 1400, 144, image)
+        && clipboard::setBitmap(image.widthPx, image.heightPx, image.rgb, fallback.str())) {
+      statusMessage_ = "Comparison chart image copied to clipboard.";
+    }
+  };
+
   if (preferredExportFormat == 1) {
     if (ImGui::Button("Export PNG")) exportPngAction();
     ImGui::SameLine();
@@ -507,6 +550,10 @@ void CompareWorkspacePanel::draw() {
     ImGui::SameLine();
     if (ImGui::Button("Export PNG")) exportPngAction();
   }
+  ImGui::SameLine();
+  if (ImGui::Button("Copy Chart SVG")) copySvgAction();
+  ImGui::SameLine();
+  if (ImGui::Button("Copy Chart Image")) copyImageAction();
   if (!canExport) ImGui::EndDisabled();
 
   if (!statusMessage_.empty()) {

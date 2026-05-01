@@ -3,6 +3,7 @@ add_library(asteria_ui STATIC
   app_window.cpp
   about_dialog.cpp
   astrology_font.cpp
+  clipboard.cpp
   export_options.cpp
   file_dialog.cpp
   library_panel.cpp

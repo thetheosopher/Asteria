@@ -129,6 +129,10 @@ ALTER TABLE birth_events ADD COLUMN latitude_deg REAL;
 ALTER TABLE birth_events ADD COLUMN longitude_deg REAL;
 ALTER TABLE birth_events ADD COLUMN timezone_offset_hours REAL;
 ALTER TABLE birth_events ADD COLUMN dst_offset_hours REAL;
+)"},
+  {3, "Add export metadata JSON to export_artifacts",
+   R"(
+ALTER TABLE export_artifacts ADD COLUMN export_metadata_json TEXT NOT NULL DEFAULT '{}';
 )"}
 };
 

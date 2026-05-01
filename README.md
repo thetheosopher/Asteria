@@ -34,7 +34,8 @@ Copyright © 2026 Michael A. McCloskey. Licensed under the [GNU General Public L
 ### Export
 - **SVG** vector export with deterministic, archival-quality output
 - **PNG** rasterized export with reference sheet layouts
-- Clipboard copy of chart text for AI chat prompts
+- Clipboard copy of chart text, chart SVG, chart images, AI interpretations, and AI packages with rich fallbacks
+- PDF AI interpretation reports with report templates, optional vector chart drawing, archival metadata, and the chart used for generation
 
 ### Data Management
 - SQLite database with person/birth-event CRUD
@@ -63,7 +64,7 @@ Download the latest `Asteria-x.y.z-portable.zip` from [Releases](https://github.
 - **Windows 10/11** (x64)
 - **Visual Studio 2022** (or later) with C++ desktop workload
 - **CMake 3.23+**
-- Internet access for FetchContent dependencies (Dear ImGui, SQLite, GoogleTest, cpp-httplib)
+- Internet access for FetchContent dependencies (Dear ImGui, SQLite, GoogleTest, cpp-httplib, libharu)
 
 The checked-in `default` preset currently targets the Visual Studio 2022 generator (`Visual Studio 17 2022`).
 
@@ -100,6 +101,9 @@ The automation CLI is built alongside the main application:
 # Export SVG
 .\build\default\src\automation\Release\asteria_cli.exe export-svg --chart-type natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5 --output chart.svg
 
+# Export an AI interpretation PDF report
+.\build\default\src\automation\Release\asteria_cli.exe export-ai-report-pdf --chart-type natal --primary-datetime 1990-01-01T12:00 --primary-latitude 40 --primary-longitude -75 --primary-timezone -5 --interpretation-file interpretation.md --template client --output report.pdf
+
 # Generate transit timeline
 .\build\default\src\automation\Release\asteria_cli.exe generate-transit-timeline --natal-datetime 1990-01-01T12:00 --natal-latitude 40 --natal-longitude -75 --natal-timezone -5 --start 2026-01-01T00:00 --years 5 --output timeline.md
 
@@ -117,7 +121,7 @@ JSON request files are also supported with `--input <path>`. See `tools/examples
 src/
   app/          Main application entry point
   automation/   CLI tool
-  core/         Services (natal, comparison, transit, interpretation, export)
+  core/         Services (natal, comparison, transit, interpretation, export, reports)
   data/         SQLite repositories and migrations
   domain/       Domain model (Person, BirthEvent, ComputedChart, etc.)
   engine/       Astrolog adapter and embedded engine

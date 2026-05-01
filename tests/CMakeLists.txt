@@ -6,6 +6,7 @@ set(TEST_SOURCES
   unit/comparison_service_test.cpp
   unit/comparison_render_test.cpp
   unit/interpretation_test.cpp
+  unit/report_service_test.cpp
   unit/transit_report_service_test.cpp
   unit/export_test.cpp
   unit/cli_dispatcher_test.cpp

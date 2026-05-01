@@ -36,6 +36,12 @@ Asteria includes the following third-party components:
 - URL: https://github.com/yhirose/cpp-httplib
 - Usage: HTTP client for local Ollama API
 
+## libharu
+- Authors: Takeshi Kanno, Antony Dovgal, and contributors
+- License: zlib/libpng-style permissive license
+- URL: https://github.com/libharu/libharu
+- Usage: PDF generation for AI interpretation reports
+
 ## Google Test
 - Author: Google Inc.
 - License: BSD 3-Clause

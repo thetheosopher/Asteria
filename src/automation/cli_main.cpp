@@ -2,8 +2,10 @@
 #include <array>
 #include <ctime>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -11,6 +13,7 @@
 
 #include "automation/cli_dispatcher.h"
 #include "automation/cli_json_input.h"
+#include "core/report_service.h"
 #include "engine/astrolog_embedded_engine.h"
 #include "util/atlas_service.h"
 
@@ -28,6 +31,8 @@ std::string getArg(const std::vector<std::string>& args,
 std::string getArgWithAliases(const std::vector<std::string>& args,
                               const std::vector<std::string>& flags,
                               const std::string& defaultValue = "");
+
+bool hasArg(const std::vector<std::string>& args, const std::string& flag);
 
 std::optional<std::int64_t> parseInt64(const std::string& value);
 
@@ -99,8 +104,37 @@ std::optional<double> getJsonNumber(const CliJsonValue* root,
   return asteria::automation::cliJsonNumberValue(*value);
 }
 
+std::optional<bool> getJsonBool(const CliJsonValue* root,
+                                const std::vector<JsonPath>& candidatePaths) {
+  const auto* value = findFirstJsonPath(root, candidatePaths);
+  if (value == nullptr) {
+    return std::nullopt;
+  }
+  if (const bool* boolValue = value->asBool()) {
+    return *boolValue;
+  }
+  if (const auto stringValue = asteria::automation::cliJsonStringValue(*value)) {
+    const std::string lowered = toLower(trim(*stringValue));
+    if (lowered == "true" || lowered == "1" || lowered == "yes") return true;
+    if (lowered == "false" || lowered == "0" || lowered == "no") return false;
+  }
+  return std::nullopt;
+}
+
 bool hasJsonPath(const CliJsonValue* root, const std::vector<JsonPath>& candidatePaths) {
   return findFirstJsonPath(root, candidatePaths) != nullptr;
+}
+
+bool getBoolOption(const std::vector<std::string>& args,
+                   const std::string& trueFlag,
+                   const std::string& falseFlag,
+                   const CliJsonValue* inputRoot,
+                   const std::vector<JsonPath>& jsonPaths,
+                   bool defaultValue) {
+  if (hasArg(args, trueFlag)) return true;
+  if (hasArg(args, falseFlag)) return false;
+  if (auto jsonValue = getJsonBool(inputRoot, jsonPaths)) return *jsonValue;
+  return defaultValue;
 }
 
 std::string getOptionString(const std::vector<std::string>& args,
@@ -236,6 +270,9 @@ void printUsage() {
       << "  export-png\n"
       << "      --chart-type natal|synastry|composite|transit --output <path>\n"
       << "      use the same input flags as the matching compute command, plus [--theme <name>] and for PNG [--width <px>] [--height <px>] [--dpi <dpi>]\n"
+      << "  export-ai-report-pdf\n"
+      << "      --chart-type natal|synastry|composite|transit --output <path> [--interpretation-file <md>]\n"
+      << "      use the same input flags as the matching compute command, plus [--template client|study-notes|compact-one-page|archive-copy] [--vector-chart] [--archival]\n"
       << "  resolve-location --query <text>\n"
       << "\nOptions:\n"
       << "  --input           Load command options from a JSON object file; inline flags override file values\n"
@@ -593,6 +630,38 @@ std::optional<CliDispatcher::ExportChartType> parseExportChartType(const std::st
   return std::nullopt;
 }
 
+std::optional<asteria::core::PdfReportTemplate> parsePdfReportTemplate(const std::string& value) {
+  const std::string lowered = toLower(trim(value));
+  if (lowered.empty() || lowered == "client" || lowered == "client-report" || lowered == "client_report") {
+    return asteria::core::PdfReportTemplate::ClientReport;
+  }
+  if (lowered == "study" || lowered == "study-notes" || lowered == "study_notes") {
+    return asteria::core::PdfReportTemplate::StudyNotes;
+  }
+  if (lowered == "compact" || lowered == "compact-one-page" || lowered == "compact_one_page") {
+    return asteria::core::PdfReportTemplate::CompactOnePage;
+  }
+  if (lowered == "archive" || lowered == "archive-copy" || lowered == "archive_copy") {
+    return asteria::core::PdfReportTemplate::ArchiveCopy;
+  }
+  return std::nullopt;
+}
+
+std::optional<std::string> readTextFile(const std::string& path, std::string& errorMessage) {
+  std::ifstream input(path, std::ios::binary);
+  if (!input) {
+    errorMessage = "Failed to open text file: " + path;
+    return std::nullopt;
+  }
+  std::ostringstream contents;
+  contents << input.rdbuf();
+  if (!input.good() && !input.eof()) {
+    errorMessage = "Failed to read text file: " + path;
+    return std::nullopt;
+  }
+  return contents.str();
+}
+
 std::optional<CliDispatcher::ExportChartOptions> parseExportChartOptions(
     const std::vector<std::string>& args,
     const CliJsonValue* inputRoot,
@@ -681,6 +750,99 @@ std::optional<CliDispatcher::ExportChartOptions> parseExportChartOptions(
       options.transit = *transit;
       break;
     }
+  }
+
+  return options;
+}
+
+std::optional<CliDispatcher::PdfReportOptions> parsePdfReportOptions(
+    const std::vector<std::string>& args,
+    const CliJsonValue* inputRoot,
+    std::string& errorMessage) {
+  auto exportOptions = parseExportChartOptions(args, inputRoot, true, errorMessage);
+  if (!exportOptions) return std::nullopt;
+
+  CliDispatcher::PdfReportOptions options;
+  options.chart = *exportOptions;
+  options.title = getOptionString(
+      args,
+      {"--title"},
+      inputRoot,
+      {JsonPath{"title"}, JsonPath{"reportTitle"}},
+      "");
+  options.sourceLabel = getOptionString(
+      args,
+      {"--source"},
+      inputRoot,
+      {JsonPath{"source"}, JsonPath{"sourceLabel"}},
+      "");
+  options.modelLabel = getOptionString(
+      args,
+      {"--model"},
+      inputRoot,
+      {JsonPath{"model"}, JsonPath{"modelLabel"}},
+      "CLI");
+
+  const std::string interpretationFile = getOptionString(
+      args,
+      {"--interpretation-file"},
+      inputRoot,
+      {JsonPath{"interpretationFile"}, JsonPath{"interpretation-file"}},
+      "");
+  if (!interpretationFile.empty()) {
+    auto loaded = readTextFile(interpretationFile, errorMessage);
+    if (!loaded) return std::nullopt;
+    options.interpretationMarkdown = *loaded;
+  }
+
+  const std::string inlineInterpretation = getOptionString(
+      args,
+      {"--interpretation"},
+      inputRoot,
+      {JsonPath{"interpretation"}, JsonPath{"interpretationMarkdown"}, JsonPath{"aiInterpretation"}},
+      "");
+  if (!inlineInterpretation.empty()) {
+    options.interpretationMarkdown = inlineInterpretation;
+  }
+
+  options.includeBuiltIn = getBoolOption(
+      args,
+      "--include-built-in",
+      "--no-built-in",
+      inputRoot,
+      {JsonPath{"includeBuiltIn"}, JsonPath{"include-built-in"}},
+      true);
+  options.archivalMode = getBoolOption(
+      args,
+      "--archival",
+      "--no-archival",
+      inputRoot,
+      {JsonPath{"archival"}, JsonPath{"archivalMode"}},
+      false);
+  options.preferVectorChart = getBoolOption(
+      args,
+      "--vector-chart",
+      "--raster-chart",
+      inputRoot,
+      {JsonPath{"vectorChart"}, JsonPath{"preferVectorChart"}},
+      false);
+
+  const std::string templateName = getOptionString(
+      args,
+      {"--template"},
+      inputRoot,
+      {JsonPath{"template"}, JsonPath{"reportTemplate"}},
+      "client");
+  auto reportTemplate = parsePdfReportTemplate(templateName);
+  if (!reportTemplate) {
+    errorMessage = "--template must be client, study-notes, compact-one-page, or archive-copy.";
+    return std::nullopt;
+  }
+  options.reportTemplate = *reportTemplate;
+
+  if (options.interpretationMarkdown.empty() && !options.includeBuiltIn) {
+    errorMessage = "export-ai-report-pdf requires --interpretation, --interpretation-file, or built-in interpretation enabled.";
+    return std::nullopt;
   }
 
   return options;
@@ -970,6 +1132,13 @@ int main(int argc, char* argv[]) {
         return 1;
       }
       result = dispatcher.exportPng(*options);
+    } else if (command == "export-ai-report-pdf") {
+      auto options = parsePdfReportOptions(args, inputRoot ? &*inputRoot : nullptr, errorMessage);
+      if (!options) {
+        std::cerr << "Error: " << errorMessage << "\n";
+        return 1;
+      }
+      result = dispatcher.exportPdfReport(*options);
     } else {
       std::cerr << "Unknown command: " << command << "\n";
       printUsage();

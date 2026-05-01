@@ -4,9 +4,14 @@ add_library(asteria_core
   comparison_chart_service.cpp
   interpretation_service.cpp
   export_service.cpp
+  report_service.cpp
   birth_event_resolver.cpp
   transit_report_service.cpp
 )
 
 target_include_directories(asteria_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(asteria_core PUBLIC asteria_domain asteria_engine asteria_render asteria_data)
+target_include_directories(asteria_core PRIVATE
+  ${libharu_SOURCE_DIR}/include
+  ${libharu_BINARY_DIR}/include
+)
+target_link_libraries(asteria_core PUBLIC asteria_domain asteria_engine asteria_render asteria_data hpdf)

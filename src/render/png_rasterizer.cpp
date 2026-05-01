@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -75,21 +76,16 @@ void collectLayers(const std::vector<T>& elements,
   for (const auto& element : elements) byLayer[element.layer].push_back(&element);
 }
 
-}  // namespace
+std::unique_ptr<Bitmap> renderSceneBitmap(const ChartScene& scene,
+                                          int widthPx,
+                                          int heightPx,
+                                          int dpi) {
+  if (widthPx <= 0 || heightPx <= 0) return nullptr;
 
-bool writePngFile(const ChartScene& scene,
-                  const std::string& filePath,
-                  int widthPx,
-                  int heightPx,
-                  int dpi) {
-  session();
+  auto bitmap = std::make_unique<Bitmap>(widthPx, heightPx, PixelFormat32bppARGB);
+  bitmap->SetResolution(static_cast<REAL>(dpi), static_cast<REAL>(dpi));
 
-  if (widthPx <= 0 || heightPx <= 0) return false;
-
-  Bitmap bitmap(widthPx, heightPx, PixelFormat32bppARGB);
-  bitmap.SetResolution(static_cast<REAL>(dpi), static_cast<REAL>(dpi));
-
-  Graphics graphics(&bitmap);
+  Graphics graphics(bitmap.get());
   graphics.SetSmoothingMode(SmoothingModeAntiAlias);
   graphics.SetInterpolationMode(InterpolationModeHighQualityBicubic);
   graphics.SetTextRenderingHint(TextRenderingHintAntiAliasGridFit);
@@ -176,11 +172,61 @@ bool writePngFile(const ChartScene& scene,
   };
 
   for (const auto& layer : layers) drawLayer(layer);
+  return bitmap;
+}
+
+}  // namespace
+
+bool rasterizeSceneRgb(const ChartScene& scene,
+                       int widthPx,
+                       int heightPx,
+                       int dpi,
+                       RasterImage& outImage) {
+  session();
+
+  auto bitmap = renderSceneBitmap(scene, widthPx, heightPx, dpi);
+  if (!bitmap) return false;
+
+  Rect rect(0, 0, widthPx, heightPx);
+  BitmapData data{};
+  if (bitmap->LockBits(&rect, ImageLockModeRead, PixelFormat32bppARGB, &data) != Ok) {
+    return false;
+  }
+
+  outImage.widthPx = widthPx;
+  outImage.heightPx = heightPx;
+  outImage.rgb.assign(static_cast<size_t>(widthPx) * static_cast<size_t>(heightPx) * 3u, 0);
+
+  const auto* source = static_cast<const unsigned char*>(data.Scan0);
+  for (int y = 0; y < heightPx; ++y) {
+    const auto* row = source + static_cast<ptrdiff_t>(data.Stride) * y;
+    for (int x = 0; x < widthPx; ++x) {
+      const auto* pixel = row + x * 4;
+      const size_t destIndex = (static_cast<size_t>(y) * static_cast<size_t>(widthPx) + static_cast<size_t>(x)) * 3u;
+      outImage.rgb[destIndex + 0] = pixel[2];
+      outImage.rgb[destIndex + 1] = pixel[1];
+      outImage.rgb[destIndex + 2] = pixel[0];
+    }
+  }
+
+  bitmap->UnlockBits(&data);
+  return true;
+}
+
+bool writePngFile(const ChartScene& scene,
+                  const std::string& filePath,
+                  int widthPx,
+                  int heightPx,
+                  int dpi) {
+  session();
+
+  auto bitmap = renderSceneBitmap(scene, widthPx, heightPx, dpi);
+  if (!bitmap) return false;
 
   CLSID pngClsid{};
   if (!getPngEncoderClsid(&pngClsid)) return false;
   const std::wstring widePath = utf8ToWide(filePath);
-  return bitmap.Save(widePath.c_str(), &pngClsid, nullptr) == Ok;
+  return bitmap->Save(widePath.c_str(), &pngClsid, nullptr) == Ok;
 }
 
 }  // namespace asteria::render

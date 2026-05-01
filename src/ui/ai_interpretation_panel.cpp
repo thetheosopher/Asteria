@@ -1,12 +1,21 @@
 #include "ai_interpretation_panel.h"
 #include "app_context.h"
+#include "clipboard.h"
+#include "export_options.h"
 #include "file_dialog.h"
 #include "markdown_render.h"
+#include "core/report_service.h"
+#include "render/comparison_chart_layout.h"
+#include "render/natal_chart_layout.h"
+#include "render/theme_presets.h"
+#include "render/transit_chart_layout.h"
 #include "util/ollama_client.h"
 #include "imgui.h"
 
 #include <algorithm>
+#include <ctime>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <vector>
 
@@ -50,6 +59,47 @@ std::string buildInterpretationFileName(const std::string& analysisLabel,
   }
   baseName += " - AI Interpretation";
   return sanitizeFileName(baseName) + ".md";
+}
+
+std::string buildReportFileName(const std::string& analysisLabel,
+                                const std::string& model) {
+  std::string baseName = analysisLabel.empty() ? std::string("Chart") : analysisLabel;
+  if (!model.empty()) {
+    baseName += " - " + model;
+  }
+  baseName += " - AI Report";
+  return sanitizeFileName(baseName) + ".pdf";
+}
+
+int parseSettingIndex(const AppContext& ctx, const char* key, int fallback, int maxExclusive) {
+  int value = fallback;
+  try { value = std::stoi(ctx.getSetting(key, std::to_string(fallback))); }
+  catch (...) { value = fallback; }
+  if (value < 0 || value >= maxExclusive) return fallback;
+  return value;
+}
+
+constexpr core::PdfReportTemplate kReportTemplates[] = {
+    core::PdfReportTemplate::ClientReport,
+    core::PdfReportTemplate::StudyNotes,
+    core::PdfReportTemplate::CompactOnePage,
+    core::PdfReportTemplate::ArchiveCopy,
+};
+
+int reportTemplateIndex(core::PdfReportTemplate reportTemplate) {
+  for (int i = 0; i < static_cast<int>(std::size(kReportTemplates)); ++i) {
+    if (kReportTemplates[i] == reportTemplate) return i;
+  }
+  return 0;
+}
+
+std::string localTimestampLabel() {
+  std::time_t now = std::time(nullptr);
+  std::tm local{};
+  localtime_s(&local, &now);
+  char buffer[32] = {};
+  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &local);
+  return buffer;
 }
 
 }  // namespace
@@ -186,31 +236,33 @@ void AiInterpretationPanel::draw() {
     ImGui::Text("Query Type: %s", queryTypeLabel.c_str());
   }
 
+  std::string model = m_ctx.getSetting("ollama_model", "");
+  const bool modelReady = ollamaEnabled && !model.empty();
   if (!ollamaEnabled) {
     ImGui::Separator();
     ImGui::TextWrapped("Ollama integration is disabled. Enable it in Settings and "
                        "select a model to use AI-generated interpretations.");
-    ImGui::End();
-    return;
-  }
-
-  std::string model = m_ctx.getSetting("ollama_model", "");
-  if (model.empty()) {
+  } else if (model.empty()) {
     ImGui::Separator();
     ImGui::TextWrapped("No Ollama model selected. Open Settings and choose a model "
                        "from the Ollama Model dropdown.");
-    ImGui::End();
-    return;
   }
 
   // Status header.
-  ImGui::Text("Model: %s", model.c_str());
-    const bool hasContext = m_chart.has_value() || !m_customPrompt.empty();
-    if (!hasContext) {
+  ImGui::Text("Model: %s", model.empty() ? "None selected" : model.c_str());
+  const bool hasContext = m_chart.has_value() || !m_customPrompt.empty();
+  if (!hasContext) {
     ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f),
       "No chart or AI request available yet. Compute a chart or send a request from another panel.");
   }
   ImGui::Separator();
+
+  // Snapshot the shared streaming state.
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_displayText = m_streamedText;
+    m_displayError = m_errorText;
+  }
 
   // Optional focus question.
   ImGuiStyle& style = ImGui::GetStyle();
@@ -218,11 +270,9 @@ void AiInterpretationPanel::draw() {
   const float labelWidth = ImGui::CalcTextSize("Focus (optional):").x;
   const float generateButtonWidth = ImGui::CalcTextSize("Generate").x + style.FramePadding.x * 2.0f;
   const float stopButtonWidth = ImGui::CalcTextSize("Stop").x + style.FramePadding.x * 2.0f;
-  const float saveButtonWidth = ImGui::CalcTextSize("Save...").x + style.FramePadding.x * 2.0f;
   const float primaryButtonWidth = (std::max)(generateButtonWidth, stopButtonWidth);
-  const float reservedButtonWidth = primaryButtonWidth + saveButtonWidth + style.ItemSpacing.x * 2.0f;
-  const float availableFocusWidth = panelContentWidth - labelWidth - reservedButtonWidth - style.ItemSpacing.x;
-  const float focusWidth = (std::max)(1.0f, (std::min)(panelContentWidth * 0.5f, availableFocusWidth));
+  const float availableFocusWidth = panelContentWidth - labelWidth - primaryButtonWidth - style.ItemSpacing.x * 2.0f;
+  const float focusWidth = (std::max)(1.0f, availableFocusWidth);
 
   ImGui::Text("Focus (optional):");
   ImGui::SameLine();
@@ -236,7 +286,7 @@ void AiInterpretationPanel::draw() {
       stopGeneration();
     }
   } else {
-    const bool canGenerate = hasContext;
+    const bool canGenerate = hasContext && modelReady;
     if (!canGenerate) ImGui::BeginDisabled();
     if (ImGui::Button("Generate")) {
       startGeneration();
@@ -244,19 +294,53 @@ void AiInterpretationPanel::draw() {
     if (!canGenerate) ImGui::EndDisabled();
   }
 
-  ImGui::SameLine();
   bool canSave = !m_displayText.empty();
+  const bool canPackage = m_chart.has_value() || canSave;
+  const bool canReport = canSave && m_chart.has_value();
   if (!canSave) ImGui::BeginDisabled();
   if (ImGui::Button("Save...")) {
     saveInterpretation();
   }
+  ImGui::SameLine();
+  if (ImGui::Button("Copy")) {
+    copyInterpretation();
+  }
   if (!canSave) ImGui::EndDisabled();
 
-  // Snapshot the shared streaming state.
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_displayText = m_streamedText;
-    m_displayError = m_errorText;
+  ImGui::SameLine();
+  if (!canPackage) ImGui::BeginDisabled();
+  if (ImGui::Button("Copy Package")) {
+    copyInterpretationPackage();
+  }
+  if (!canPackage) ImGui::EndDisabled();
+
+  ImGui::SameLine();
+  if (!canReport) ImGui::BeginDisabled();
+  if (ImGui::Button("Preview Report")) {
+    m_reportPreviewOpen = true;
+    ImGui::OpenPopup("Report Preview");
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Report PDF...")) {
+    savePdfReport();
+  }
+  if (!canReport) ImGui::EndDisabled();
+
+  if (m_chart.has_value()) {
+    int templateIndex = reportTemplateIndex(m_reportTemplate);
+    ImGui::SetNextItemWidth(190.0f);
+    if (ImGui::Combo("Report Template", &templateIndex,
+                     "Client Report\0Study Notes\0Compact One-Page\0Archive Copy\0")) {
+      m_reportTemplate = kReportTemplates[templateIndex];
+      if (m_reportTemplate == core::PdfReportTemplate::ArchiveCopy) {
+        m_reportArchivalMode = true;
+      }
+    }
+    ImGui::Checkbox("Built-In Section", &m_reportIncludeBuiltIn);
+    ImGui::SameLine();
+    ImGui::Checkbox("Vector Chart", &m_reportPreferVectorChart);
+    ImGui::SameLine();
+    ImGui::Checkbox("Archival", &m_reportArchivalMode);
   }
 
   // Error display.
@@ -296,6 +380,7 @@ void AiInterpretationPanel::draw() {
   }
 
   ImGui::EndChild();
+  drawReportPreview();
   ImGui::End();
 }
 
@@ -372,6 +457,197 @@ void AiInterpretationPanel::saveInterpretation() {
   }
 
   m_statusText = "Saved: " + *path;
+  m_statusIsError = false;
+}
+
+void AiInterpretationPanel::copyInterpretation() {
+  if (m_displayText.empty()) return;
+
+  if (clipboard::setMarkdown(m_displayText)) {
+    m_statusText = "AI interpretation copied to clipboard.";
+    m_statusIsError = false;
+  } else {
+    m_statusText = "Failed to copy AI interpretation.";
+    m_statusIsError = true;
+  }
+}
+
+void AiInterpretationPanel::copyInterpretationPackage() {
+  if (!m_chart && m_displayText.empty()) return;
+
+  std::ostringstream package;
+  package << "# " << currentQueryTypeLabel() << "\n\n";
+  package << "- **Analysis:** " << currentAnalysisLabel() << "\n";
+  const std::string model = m_ctx.getSetting("ollama_model", "");
+  if (!model.empty()) {
+    package << "- **AI Model:** " << model << "\n";
+  }
+  package << "- **Generated:** " << generatedAtLabel() << "\n";
+
+  if (m_chart && !m_chart->canonicalHash.empty()) {
+    package << "- **Chart Hash:** " << m_chart->canonicalHash << "\n";
+  }
+  package << "\n";
+
+  const std::string builtIn = deterministicInterpretationMarkdown();
+  if (!builtIn.empty()) {
+    package << "## Built-In Interpretation\n\n" << builtIn << "\n";
+  }
+  if (!m_displayText.empty()) {
+    package << "## AI Interpretation\n\n" << m_displayText << "\n";
+  }
+  if (m_chart) {
+    package << "## Chart Facts\n\n" << chartFactsBlock() << "\n";
+  }
+
+  if (clipboard::setMarkdown(package.str())) {
+    m_statusText = "AI interpretation package copied to clipboard.";
+    m_statusIsError = false;
+  } else {
+    m_statusText = "Failed to copy AI interpretation package.";
+    m_statusIsError = true;
+  }
+}
+
+render::ThemePreset AiInterpretationPanel::currentThemePreset() const {
+  return render::themePresetByIndex(parseSettingIndex(m_ctx, "default_theme", 0, 4));
+}
+
+std::optional<render::ChartScene> AiInterpretationPanel::buildReportScene() const {
+  if (!m_chart) return std::nullopt;
+
+  const auto theme = currentThemePreset();
+  switch (m_chartType) {
+    case domain::ChartType::Natal:
+      return render::buildNatalChartScene(*m_chart, theme);
+    case domain::ChartType::Synastry:
+      if (m_chart->secondaryChart) {
+        return render::buildSynastryChartScene(*m_chart, *m_chart->secondaryChart, theme);
+      }
+      return std::nullopt;
+    case domain::ChartType::Composite:
+      return render::buildCompositeChartScene(*m_chart, theme);
+    case domain::ChartType::TransitToNatal:
+      if (m_chart->secondaryChart) {
+        return render::buildTransitToNatalChartScene(*m_chart, *m_chart->secondaryChart, theme);
+      }
+      return std::nullopt;
+  }
+  return std::nullopt;
+}
+
+std::string AiInterpretationPanel::deterministicInterpretationMarkdown() const {
+  if (!m_reportIncludeBuiltIn || !m_chart) return {};
+
+  auto result = m_ctx.interpretationService.generateBuiltIn(*m_chart, m_chartType);
+  if (!result.ok()) return {};
+  return result.value().bodyMarkdown;
+}
+
+std::string AiInterpretationPanel::generatedAtLabel() const {
+  return localTimestampLabel();
+}
+
+core::PdfReportRequest AiInterpretationPanel::buildReportRequest(const std::string& outputPath) const {
+  core::PdfReportRequest request;
+  request.title = currentQueryTypeLabel();
+  request.subtitle = currentAnalysisLabel();
+  request.sourceLabel = currentAnalysisLabel();
+  const std::string model = m_ctx.getSetting("ollama_model", "");
+  request.modelLabel = model.empty() ? std::string("Ollama") : model;
+  request.generatedAtLabel = generatedAtLabel();
+  request.interpretationMarkdown = m_displayText;
+  request.deterministicInterpretationMarkdown = deterministicInterpretationMarkdown();
+  if (auto scene = buildReportScene()) {
+    request.chartScene = *scene;
+  }
+  request.theme = currentThemePreset();
+  request.computedChartId = m_chart ? m_chart->computedChartId : 0;
+  request.outputPath = outputPath;
+  request.reportTemplate = m_reportTemplate;
+  request.archivalMode = m_reportArchivalMode || m_reportTemplate == core::PdfReportTemplate::ArchiveCopy;
+  request.preferVectorChart = m_reportPreferVectorChart;
+  return request;
+}
+
+void AiInterpretationPanel::drawReportPreview() {
+  if (!m_reportPreviewOpen) return;
+
+  bool openPreview = true;
+  if (ImGui::BeginPopupModal("Report Preview", &openPreview, ImGuiWindowFlags_AlwaysAutoResize)) {
+    const core::PdfReportRequest request = buildReportRequest();
+    ImGui::Text("%s", request.title.c_str());
+    ImGui::TextDisabled("%s", request.subtitle.c_str());
+    ImGui::Separator();
+    ImGui::Text("Template: %s", core::pdfReportTemplateLabel(request.reportTemplate));
+    ImGui::Text("Chart: %s", buildReportScene() ? (request.preferVectorChart ? "Vector PDF drawing" : "Raster image embed") : "Unavailable");
+    ImGui::Text("Built-In Section: %s", request.deterministicInterpretationMarkdown.empty() ? "No" : "Yes");
+    ImGui::Text("Archival: %s", request.archivalMode ? "Yes" : "No");
+    ImGui::Text("Generated: %s", request.generatedAtLabel.c_str());
+
+    ImGui::Separator();
+    ImGui::BeginChild("ReportPreviewBody", ImVec2(560.0f, 360.0f), ImGuiChildFlags_Borders);
+    if (!request.deterministicInterpretationMarkdown.empty()) {
+      markdown_render::renderMarkdown("## Built-In Interpretation\n\n" + request.deterministicInterpretationMarkdown);
+      ImGui::Separator();
+    }
+    if (!request.interpretationMarkdown.empty()) {
+      markdown_render::renderMarkdown("## AI Interpretation\n\n" + request.interpretationMarkdown);
+    } else {
+      ImGui::TextDisabled("No AI interpretation text is available for the report yet.");
+    }
+    ImGui::EndChild();
+
+    if (ImGui::Button("Close")) {
+      openPreview = false;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
+
+  if (!openPreview) {
+    m_reportPreviewOpen = false;
+  }
+}
+
+void AiInterpretationPanel::savePdfReport() {
+  if (m_displayText.empty()) return;
+
+  auto scene = buildReportScene();
+  if (!scene) {
+    m_statusText = "No chart is available for this AI report.";
+    m_statusIsError = true;
+    return;
+  }
+
+  const std::string model = m_ctx.getSetting("ollama_model", "");
+  const std::string defaultFileName = buildReportFileName(currentAnalysisLabel(), model);
+
+  auto path = showSaveFileDialog(
+      L"Save AI Interpretation PDF Report",
+      defaultFileName,
+      L"PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
+      L"pdf");
+  if (!path) {
+    return;
+  }
+
+  core::PdfReportRequest request = buildReportRequest(*path);
+  request.chartScene = *scene;
+
+  auto result = m_ctx.reportService.exportPdfReport(request);
+  if (!result.ok()) {
+    m_statusText = "PDF report failed: " + result.error().message;
+    m_statusIsError = true;
+    return;
+  }
+
+  auto artifact = result.value();
+  if (artifact.computedChartId > 0) {
+    m_ctx.chartRepo.insertExportArtifact(artifact);
+  }
+
+  m_statusText = "PDF report saved: " + artifact.filePath;
   m_statusIsError = false;
 }
 

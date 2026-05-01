@@ -14,6 +14,7 @@
 #include <fstream>
 #include <sstream>
 #include <string_view>
+#include <ctime>
 
 namespace asteria::automation {
 
@@ -164,6 +165,33 @@ std::string exportChartTypeName(CliDispatcher::ExportChartType chartType) {
       return "transit_to_natal";
   }
   return "natal";
+}
+
+domain::ChartType domainChartType(CliDispatcher::ExportChartType chartType) {
+  switch (chartType) {
+    case CliDispatcher::ExportChartType::Synastry:
+      return domain::ChartType::Synastry;
+    case CliDispatcher::ExportChartType::Composite:
+      return domain::ChartType::Composite;
+    case CliDispatcher::ExportChartType::TransitToNatal:
+      return domain::ChartType::TransitToNatal;
+    case CliDispatcher::ExportChartType::Natal:
+      return domain::ChartType::Natal;
+  }
+  return domain::ChartType::Natal;
+}
+
+std::string generatedAtLabel() {
+  std::time_t now = std::time(nullptr);
+  std::tm local{};
+#ifdef _WIN32
+  localtime_s(&local, &now);
+#else
+  local = *std::localtime(&now);
+#endif
+  char buffer[32] = {};
+  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &local);
+  return buffer;
 }
 
 domain::LocationResolution toLocationResolution(const util::AtlasEntry& entry,
@@ -477,7 +505,7 @@ CliDispatcher::CliResult CliDispatcher::exportSvg(
   auto exportResult = m_exportService.exportSvg(scene.value(), chart.value().computedChartId,
                                                 options.outputPath, theme, metadata);
   if (!exportResult.ok()) return {false, "", exportResult.error().message};
-  return {true, R"({"exported":")" + options.outputPath + R"(","format":"svg"})", ""};
+  return {true, R"({"exported":")" + jsonEscape(options.outputPath) + R"(","format":"svg"})", ""};
 }
 
 CliDispatcher::CliResult CliDispatcher::exportPng(
@@ -498,7 +526,66 @@ CliDispatcher::CliResult CliDispatcher::exportPng(
                                                 options.outputPath, options.widthPx,
                                                 options.heightPx, options.dpi, theme, metadata);
   if (!exportResult.ok()) return {false, "", exportResult.error().message};
-  return {true, R"({"exported":")" + options.outputPath + R"(","format":"png"})", ""};
+  return {true, R"({"exported":")" + jsonEscape(options.outputPath) + R"(","format":"png"})", ""};
+}
+
+CliDispatcher::CliResult CliDispatcher::exportPdfReport(
+    const PdfReportOptions& options) const {
+  if (options.chart.outputPath.empty()) {
+    return {false, "", "--output is required for export-ai-report-pdf."};
+  }
+
+  auto chart = computeExportChart(options.chart);
+  if (!chart.ok()) return {false, "", chart.error().message};
+
+  auto theme = resolveTheme(options.chart.themeName);
+  auto scene = buildExportScene(options.chart, chart.value(), theme);
+  if (!scene.ok()) return {false, "", scene.error().message};
+
+  std::string builtInMarkdown;
+  if (options.includeBuiltIn) {
+    auto builtIn = m_interpretationService.generateBuiltIn(chart.value(), domainChartType(options.chart.chartType));
+    if (!builtIn.ok()) return {false, "", builtIn.error().message};
+    builtInMarkdown = builtIn.value().bodyMarkdown;
+  }
+
+  std::filesystem::path outputPath(options.chart.outputPath);
+  if (outputPath.has_parent_path()) {
+    std::error_code ec;
+    std::filesystem::create_directories(outputPath.parent_path(), ec);
+    if (ec) {
+      return {false, "", "Failed to create output directory: " + outputPath.parent_path().string()};
+    }
+  }
+
+  core::PdfReportRequest request;
+  request.title = options.title.empty()
+      ? (exportChartTypeName(options.chart.chartType) + " AI Report")
+      : options.title;
+  request.subtitle = options.sourceLabel.empty() ? exportChartTypeName(options.chart.chartType) : options.sourceLabel;
+  request.sourceLabel = request.subtitle;
+  request.modelLabel = options.modelLabel.empty() ? std::string("CLI") : options.modelLabel;
+  request.generatedAtLabel = generatedAtLabel();
+  request.interpretationMarkdown = options.interpretationMarkdown;
+  request.deterministicInterpretationMarkdown = builtInMarkdown;
+  request.chartScene = scene.value();
+  request.theme = theme;
+  request.computedChartId = chart.value().computedChartId;
+  request.outputPath = options.chart.outputPath;
+  request.reportTemplate = options.reportTemplate;
+  request.archivalMode = options.archivalMode || options.reportTemplate == core::PdfReportTemplate::ArchiveCopy;
+  request.preferVectorChart = options.preferVectorChart;
+  request.chartImageWidthPx = options.chart.widthPx;
+  request.chartImageHeightPx = options.chart.heightPx;
+  request.chartImageDpi = options.chart.dpi;
+
+  auto exportResult = m_reportService.exportPdfReport(request);
+  if (!exportResult.ok()) return {false, "", exportResult.error().message};
+  return {true,
+        R"({"exported":")" + jsonEscape(options.chart.outputPath) +
+          R"(","format":"pdf","template":")" + jsonEscape(core::pdfReportTemplateLabel(options.reportTemplate)) +
+              R"(","chartBackend":")" + (options.preferVectorChart ? "vector" : "raster") + R"("})",
+          ""};
 }
 
 CliDispatcher::CliResult CliDispatcher::resolveLocation(const std::string& query) const {

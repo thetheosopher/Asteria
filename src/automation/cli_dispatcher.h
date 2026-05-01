@@ -1,5 +1,7 @@
 #pragma once
 #include "core/export_service.h"
+#include "core/interpretation_service.h"
+#include "core/report_service.h"
 #include "core/transit_report_service.h"
 #include "engine/ichart_engine.h"
 
@@ -72,6 +74,18 @@ class CliDispatcher {
     int dpi = 150;
   };
 
+  struct PdfReportOptions {
+    ExportChartOptions chart;
+    std::string title;
+    std::string sourceLabel;
+    std::string modelLabel = "CLI";
+    std::string interpretationMarkdown;
+    bool includeBuiltIn = true;
+    core::PdfReportTemplate reportTemplate = core::PdfReportTemplate::ClientReport;
+    bool archivalMode = false;
+    bool preferVectorChart = false;
+  };
+
   struct TransitTimelineOptions {
     std::string subjectName;
     BirthInputOptions natal;
@@ -97,6 +111,8 @@ class CliDispatcher {
 
   CliResult exportPng(const ExportChartOptions& options) const;
 
+  CliResult exportPdfReport(const PdfReportOptions& options) const;
+
   CliResult resolveLocation(const std::string& query) const;
   static std::string locationsToJson(const std::vector<domain::LocationResolution>& locations);
 
@@ -104,6 +120,8 @@ class CliDispatcher {
   engine::IChartEngine& m_engine;
   util::AtlasService* m_atlasService = nullptr;
   core::ExportService m_exportService;
+  core::InterpretationService m_interpretationService;
+  core::ReportService m_reportService;
 
   domain::ChartRequest makeRequest(const std::string& houseSystem,
                                    const std::string& zodiacMode) const;

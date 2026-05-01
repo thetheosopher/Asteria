@@ -21,6 +21,8 @@ Examples:
 
 .\build\default\src\automation\Debug\asteria_cli.exe export-png --input .\tools\examples\automation-cli\export_png_synastry.json
 
+.\build\default\src\automation\Debug\asteria_cli.exe export-ai-report-pdf --input .\tools\examples\automation-cli\export_ai_report_pdf.json
+
 .\build\default\src\automation\Debug\asteria_cli.exe resolve-location --input .\tools\examples\automation-cli\resolve_location.json
 ```
 

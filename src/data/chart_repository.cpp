@@ -71,6 +71,35 @@ bool ChartRepository::insertComputed(domain::ComputedChart& chart) {
   return ok;
 }
 
+bool ChartRepository::insertExportArtifact(domain::ExportArtifact& artifact) {
+  const char* exportTypeStr = "svg";
+  switch (artifact.exportType) {
+    case domain::ExportType::Png: exportTypeStr = "png"; break;
+    case domain::ExportType::Pdf: exportTypeStr = "pdf"; break;
+    case domain::ExportType::Svg: break;
+  }
+
+  bool ok = m_db.executeWithParams(
+    "INSERT INTO export_artifacts (computed_chart_id, export_type, file_path, "
+    "width_px, height_px, dpi, theme_snapshot_json, export_metadata_json) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    [&](sqlite3_stmt* stmt) {
+      sqlite3_bind_int64(stmt, 1, artifact.computedChartId);
+      sqlite3_bind_text(stmt, 2, exportTypeStr, -1, SQLITE_STATIC);
+      sqlite3_bind_text(stmt, 3, artifact.filePath.c_str(), -1, SQLITE_TRANSIENT);
+      if (artifact.widthPx) sqlite3_bind_int(stmt, 4, *artifact.widthPx);
+      else sqlite3_bind_null(stmt, 4);
+      if (artifact.heightPx) sqlite3_bind_int(stmt, 5, *artifact.heightPx);
+      else sqlite3_bind_null(stmt, 5);
+      if (artifact.dpi) sqlite3_bind_int(stmt, 6, *artifact.dpi);
+      else sqlite3_bind_null(stmt, 6);
+      sqlite3_bind_text(stmt, 7, artifact.themeSnapshotJson.c_str(), -1, SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 8, artifact.exportMetadataJson.c_str(), -1, SQLITE_TRANSIENT);
+    });
+  if (ok) artifact.exportArtifactId = m_db.lastInsertRowId();
+  return ok;
+}
+
 std::optional<domain::ComputedChart> ChartRepository::findComputedByHash(const std::string& canonicalHash) const {
   std::optional<domain::ComputedChart> result;
   m_db.queryWithParams(

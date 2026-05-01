@@ -234,6 +234,28 @@ TEST_F(CliDispatcherTest, ExportPngCreatesFile) {
   EXPECT_TRUE(std::filesystem::exists(options.outputPath));
 }
 
+TEST_F(CliDispatcherTest, ExportPdfReportCreatesFile) {
+  asteria::automation::CliDispatcher dispatcher(engine);
+  asteria::automation::CliDispatcher::PdfReportOptions options;
+  options.chart.chartType = asteria::automation::CliDispatcher::ExportChartType::Natal;
+  options.chart.primary = primaryInput();
+  options.chart.outputPath = (tempDir / "cli_report.pdf").string();
+  options.chart.widthPx = 320;
+  options.chart.heightPx = 320;
+  options.chart.dpi = 144;
+  options.title = "CLI PDF Report";
+  options.sourceLabel = "CLI fixture";
+  options.interpretationMarkdown = "## AI Interpretation\n\n- Generated note";
+  options.reportTemplate = asteria::core::PdfReportTemplate::StudyNotes;
+  options.preferVectorChart = true;
+
+  auto result = dispatcher.exportPdfReport(options);
+  ASSERT_TRUE(result.success) << result.errorMessage;
+  EXPECT_TRUE(std::filesystem::exists(options.chart.outputPath));
+  EXPECT_NE(result.outputJson.find("pdf"), std::string::npos);
+  EXPECT_NE(result.outputJson.find("Study Notes"), std::string::npos);
+}
+
 TEST_F(CliDispatcherTest, GenerateTransitTimelineReturnsMarkdownAndSavesFile) {
   asteria::automation::CliDispatcher dispatcher(engine);
   asteria::automation::CliDispatcher::TransitTimelineOptions options;

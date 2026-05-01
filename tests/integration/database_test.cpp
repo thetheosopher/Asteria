@@ -7,8 +7,15 @@
 #include "data/location_repository.h"
 #include "data/chart_repository.h"
 #include "data/theme_repository.h"
+#include "domain/export_artifact.h"
 
 namespace fs = std::filesystem;
+
+namespace {
+
+constexpr int kExpectedSchemaVersion = 3;
+
+}  // namespace
 
 class DatabaseTest : public ::testing::Test {
  protected:
@@ -32,13 +39,57 @@ class DatabaseTest : public ::testing::Test {
 
 TEST_F(DatabaseTest, MigrationRunnerCreatesSchema) {
   asteria::data::MigrationRunner runner(*db);
-  EXPECT_EQ(runner.currentVersion(), 2);
+  EXPECT_EQ(runner.currentVersion(), kExpectedSchemaVersion);
 }
 
 TEST_F(DatabaseTest, MigrationIsIdempotent) {
   asteria::data::MigrationRunner runner(*db);
   ASSERT_TRUE(runner.runMigrations());
-  EXPECT_EQ(runner.currentVersion(), 2);
+  EXPECT_EQ(runner.currentVersion(), kExpectedSchemaVersion);
+}
+
+TEST_F(DatabaseTest, ExportArtifactInsertRecordsMetadata) {
+  asteria::data::PersonRepository personRepo(*db);
+  asteria::data::ChartRepository repo(*db);
+
+  asteria::domain::Person person;
+  person.fullName = "Export Parent";
+  person.displayName = "Export Parent";
+  ASSERT_TRUE(personRepo.insert(person));
+
+  asteria::data::BirthEventRepository eventRepo(*db);
+  asteria::domain::BirthEvent event;
+  event.personId = person.personId;
+  event.birthDate = "1990-01-01";
+  event.birthTime = std::string("12:00");
+  event.timeAccuracy = asteria::domain::TimeAccuracy::Exact;
+  ASSERT_TRUE(eventRepo.insert(event));
+
+  asteria::domain::ChartRequest request;
+  request.primaryBirthEventId = event.birthEventId;
+  ASSERT_TRUE(repo.insertRequest(request));
+
+  asteria::domain::ComputedChart chart;
+  chart.chartRequestId = request.chartRequestId;
+  chart.engineVersion = "test";
+  chart.engineMethod = "test";
+  chart.canonicalHash = "export-artifact-test";
+  chart.houseSystem = "Placidus";
+  chart.zodiacMode = "Tropical";
+  ASSERT_TRUE(repo.insertComputed(chart));
+
+  asteria::domain::ExportArtifact artifact;
+  artifact.computedChartId = chart.computedChartId;
+  artifact.exportType = asteria::domain::ExportType::Pdf;
+  artifact.filePath = "report.pdf";
+  artifact.widthPx = 612;
+  artifact.heightPx = 792;
+  artifact.dpi = 300;
+  artifact.themeSnapshotJson = R"({"theme":"Textbook Light"})";
+  artifact.exportMetadataJson = R"({"report_type":"ai_interpretation"})";
+
+  ASSERT_TRUE(repo.insertExportArtifact(artifact));
+  EXPECT_GT(artifact.exportArtifactId, 0);
 }
 
 TEST_F(DatabaseTest, PersonInsertAndFindById) {

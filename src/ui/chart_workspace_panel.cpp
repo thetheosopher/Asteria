@@ -2,12 +2,15 @@
 #include "ai_interpretation_panel.h"
 #include "app_context.h"
 #include "astrology_font.h"
+#include "clipboard.h"
 #include "export_options.h"
 #include "file_dialog.h"
 #include "markdown_render.h"
 #include "core/birth_event_resolver.h"
 #include "render/export_layout_templates.h"
 #include "render/natal_chart_layout.h"
+#include "render/png_rasterizer.h"
+#include "render/svg_serializer.h"
 #include "render/transit_chart_layout.h"
 #include "render/astro_glyphs.h"
 #include "imgui.h"
@@ -908,9 +911,33 @@ void ChartWorkspacePanel::draw() {
   if (!canCopy) ImGui::BeginDisabled();
   if (ImGui::Button("Copy Chart Text")) {
     const std::string clipboardText = buildClipboardText();
-    if (!clipboardText.empty()) {
-      ImGui::SetClipboardText(clipboardText.c_str());
+    if (!clipboardText.empty() && clipboard::setText(clipboardText)) {
       statusMessage_ = "Chart text copied to clipboard.";
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Copy Chart SVG")) {
+    const auto theme = currentThemePreset();
+    const render::ChartScene clipboardScene =
+        (currentChartType_ == 1 && m_chart && m_chart->secondaryChart)
+            ? render::buildTransitToNatalChartScene(*m_chart, *m_chart->secondaryChart, theme)
+            : render::buildNatalChartScene(*m_chart, theme);
+    const std::string svg = render::serializeSvg(clipboardScene);
+    if (!svg.empty() && clipboard::setSvg(svg, buildClipboardText())) {
+      statusMessage_ = "Chart SVG copied to clipboard.";
+    }
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Copy Chart Image")) {
+    const auto theme = currentThemePreset();
+    const render::ChartScene clipboardScene =
+        (currentChartType_ == 1 && m_chart && m_chart->secondaryChart)
+            ? render::buildTransitToNatalChartScene(*m_chart, *m_chart->secondaryChart, theme)
+            : render::buildNatalChartScene(*m_chart, theme);
+    render::RasterImage image;
+    if (render::rasterizeSceneRgb(clipboardScene, 1400, 1400, 144, image)
+        && clipboard::setBitmap(image.widthPx, image.heightPx, image.rgb, buildClipboardText())) {
+      statusMessage_ = "Chart image copied to clipboard.";
     }
   }
   if (!canCopy) ImGui::EndDisabled();
