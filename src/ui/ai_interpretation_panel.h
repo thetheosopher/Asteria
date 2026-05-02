@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -12,6 +13,10 @@
 #include "domain/types.h"
 #include "render/chart_scene.h"
 #include "render/theme_presets.h"
+
+namespace asteria::util {
+class OllamaClient;
+}
 
 namespace asteria::ui {
 
@@ -87,6 +92,8 @@ class AiInterpretationPanel {
   std::atomic<bool> m_generating{false};
   std::atomic<bool> m_abortFlag{false};
   std::thread m_worker;
+  std::mutex m_activeClientMutex;
+  std::shared_ptr<asteria::util::OllamaClient> m_activeClient;
 
   // Snapshot read by draw() each frame (no lock needed — only UI thread reads/writes).
   std::string m_displayText;

@@ -15,6 +15,7 @@ set(TEST_SOURCES
   unit/birth_event_resolver_test.cpp
   unit/svg_determinism_test.cpp
   unit/atlas_service_test.cpp
+  unit/ollama_client_test.cpp
   integration/database_test.cpp
   integration/library_database_exchange_test.cpp
   integration/astrolog_engine_test.cpp

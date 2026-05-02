@@ -345,7 +345,9 @@ void AiInterpretationPanel::draw() {
 
   // Error display.
   if (!m_displayError.empty()) {
-    ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", m_displayError.c_str());
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
+    ImGui::TextWrapped("%s", m_displayError.c_str());
+    ImGui::PopStyleColor();
   }
   if (!m_statusText.empty()) {
     const ImVec4 color = m_statusIsError
@@ -403,19 +405,29 @@ void AiInterpretationPanel::startGeneration() {
   std::string endpoint = m_ctx.getSetting("ollama_endpoint", "http://localhost:11434");
   std::string model    = m_ctx.getSetting("ollama_model", "");
   std::string prompt   = buildPrompt();
+  auto client = std::make_shared<util::OllamaClient>(endpoint);
+  {
+    std::lock_guard<std::mutex> lock(m_activeClientMutex);
+    m_activeClient = client;
+  }
 
-  m_worker = std::thread([this, endpoint, model, prompt]() {
-    util::OllamaClient client(endpoint);
-    bool ok = client.generateStream(model, prompt,
+  m_worker = std::thread([this, client, model, prompt]() {
+    bool ok = client->generateStream(model, prompt,
         [this](const std::string& token) -> bool {
           if (m_abortFlag.load()) return false;
           std::lock_guard<std::mutex> lock(m_mutex);
           m_streamedText += token;
           return true;
         });
-    if (!ok) {
+    if (!ok && !m_abortFlag.load()) {
       std::lock_guard<std::mutex> lock(m_mutex);
-      m_errorText = client.lastError();
+      m_errorText = client->lastError();
+    }
+    {
+      std::lock_guard<std::mutex> lock(m_activeClientMutex);
+      if (m_activeClient == client) {
+        m_activeClient.reset();
+      }
     }
     m_generating.store(false);
   });
@@ -423,7 +435,19 @@ void AiInterpretationPanel::startGeneration() {
 
 void AiInterpretationPanel::stopGeneration() {
   m_abortFlag.store(true);
+  std::shared_ptr<util::OllamaClient> client;
+  {
+    std::lock_guard<std::mutex> lock(m_activeClientMutex);
+    client = m_activeClient;
+  }
+  if (client) {
+    client->stop();
+  }
   if (m_worker.joinable()) m_worker.join();
+  {
+    std::lock_guard<std::mutex> lock(m_activeClientMutex);
+    m_activeClient.reset();
+  }
   m_generating.store(false);
 }
 
