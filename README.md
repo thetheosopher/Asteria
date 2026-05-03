@@ -8,6 +8,18 @@ Copyright © 2026 Michael A. McCloskey. Licensed under the [GNU General Public L
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/theosopher)
 
+## Release History
+
+### 1.0.1
+- Improved Ollama compatibility for larger and chat-oriented local models
+- Added chat-first Ollama requests with generate fallback for models that do not support chat
+- Hardened streamed response parsing and surfaced clearer Ollama error messages
+- Made AI generation cancellation responsive while large models are loading
+
+### 1.0.0
+- Initial public desktop release with natal, synastry, composite, and transit-to-natal workflows
+- Added built-in interpretation, optional Ollama enhancement, SVG and PNG export, and PDF AI reports
+
 ## Screenshots
 
 ### Main Workspace

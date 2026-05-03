@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Resolve-Path "$PSScriptRoot\..\.."
 $BuildRoot = Join-Path $ProjectRoot "build\default"
-$Version = "1.0.0"
+$Version = "1.0.1"
 $OutputDir = Join-Path $PSScriptRoot "Output"
 $StagingDir = Join-Path $OutputDir "Asteria-$Version-portable"
 $ZipFile = Join-Path $OutputDir "Asteria-$Version-portable.zip"

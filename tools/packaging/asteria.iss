@@ -14,7 +14,7 @@
 ;   or open in Inno Setup Compiler GUI and click Compile
 
 #define MyAppName "Asteria"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Michael A. McCloskey"
 #define MyAppURL "https://github.com/thetheosopher/Asteria"
 #define MyAppCoffeeURL "https://buymeacoffee.com/theosopher"

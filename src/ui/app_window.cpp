@@ -299,7 +299,7 @@ int runApplication(data::SQLiteDatabase& database, engine::IChartEngine& engine,
   RegisterClassExW(&wc);
 
   HWND hwnd = CreateWindowExW(
-      0, wc.lpszClassName, L"Asteria v1.0.0",
+      0, wc.lpszClassName, L"Asteria v" ASTERIA_VERSION_STRING_W,
       WS_OVERLAPPEDWINDOW,
       100, 100, 1600, 1000,
       nullptr, nullptr, wc.hInstance, nullptr);
